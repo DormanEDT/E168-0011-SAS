@@ -25,8 +25,9 @@ void SAS_10MsPeriodic_Msg(void);
 void SAS_ScanToolResponce_Msg(void);
 uint8_t ReadAndDisplayAngle(void);
 void SAS_GetAngleAndVelocity(void);
-uint16_t SAS_ReadAngelSensorAt(uint8_t);
+void App_SAS_Operations(void);
 void SAS_Write_CONF_Reg(void);
+void LPI2C_CONF_Reg_Write(void);
 void sleep_actions(void);
 void wakeup_actions(void);
 #endif /* APP_SAS_H_*/

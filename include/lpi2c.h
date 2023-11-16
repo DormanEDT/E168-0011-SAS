@@ -40,6 +40,52 @@
 /*******************************************************************************
 * Constants and macros
 *******************************************************************************/
+
+//state machine for magnetic sensor read
+typedef enum
+{
+	ANGLE_SENSOR_IDLE,
+    MUX1_READ_ADDRESS_1,
+    ANGLE_SENSOR1_SLAVE_ADDR_WRITE_1,
+	ANGLE_SENSOR1_READ_ADDR_WRITE_1,
+	ANGLE_SENSOR1_ADDR_READ_BYTE_1,
+	MUX2_SLAVE_ADDR_WRITE_1,
+	MUX2_READ_ADDR_WRITE_1,
+	MUX2_READ_ADDRESS_1,
+	ANGLE_SENSOR2_SLAVE_ADDR_WRITE_1,
+	ANGLE_SENSOR2_READ_ADDR_WRITE_1,
+	ANGLE_SENSOR2_ADDR_READ_BYTE_1,
+	MUX1_SLAVE_ADDR_WRITE,
+	MUX1_READ_ADDR_WRITE,
+	MUX1_READ_ADDRESS_2,
+	ANGLE_SENSOR1_SLAVE_ADDR_WRITE_2,
+	ANGLE_SENSOR1_READ_ADDR_WRITE_2,
+	ANGLE_SENSOR1_ADDR_READ_BYTE_2,
+	MUX2_SLAVE_ADDR_WRITE_2,
+	MUX2_READ_ADDR_WRITE_2,
+	MUX2_READ_ADDRESS_2,
+	ANGLE_SENSOR2_SLAVE_ADDR_WRITE_2,
+	ANGLE_SENSOR2_READ_ADDR_WRITE_2,
+	ANGLE_SENSOR2_ADDR_READ_BYTE_2,
+	ANGLE_SENSOR_STOP
+
+}i2c_state_machine;
+typedef enum
+{
+	MUX1_SELECT,
+	MUX1_READ,
+	ANGLE_SENSOR1_ADDR_WRITE,
+	MAGNET1_STATE_READ,
+	ANGLE_SENSOR1_READ,
+	MUX2_SELECT,
+	MUX2_ADDR_WRITE,
+	MUX2_READ,
+	ANGLE_SENSOR2_ADDR_WRITE,
+	MAGNET2_STATE_READ,
+	ANGLE_SENSOR2_READ,
+	MAGNET_STATE_STOP
+
+}magnet_state_machine;
 enum err
 {
     OK,
@@ -52,31 +98,24 @@ enum err
     PLTF
 };
 
-#define BUSY_TIMEOUT        1000
-#define READING_TIMEOUT     2000
-#define STOP_TIMEOUT        3000
+extern magnet_state_machine magnet_state;
+extern i2c_state_machine i2c_state;
+extern uint8_t magnet_status;
+#define BUSY_TIMEOUT        3
+#define READING_TIMEOUT     2
+#define STOP_TIMEOUT        3
 
-
-void LPI2C_init(void);
-void LPI2C_Transmit (void);
-void LPI2C0_IRQs(void);
-uint8_t LPI2C0_write(uint8_t s_w_address, uint8_t s_reg_address, uint8_t byte);
-uint8_t LPI2C0_read(uint8_t s_r_address, uint8_t s_reg_address, uint8_t *p_buffer, uint8_t n_bytes);
-
-void LPI2C_Generate_Start_Ack (uint8_t data);
-void LPI2C_Transmit_Data(uint8_t data);
+uint8_t LPI2C_Select_MuxChannel(uint8_t target_address, uint8_t mux_channel,uint8_t* data);
+void LPI2C_Transmit_Int(void);
+void LPI2C_Transmit(void);
+void LPI2C_Generate_Start_Ack(uint8_t data);
 void LPI2C_AddressToRead(uint8_t data);
-void LPI2C_DataToRead(uint8_t data);
-
-void LPI2C_Receive_Data(uint8_t*, uint8_t );
-uint8_t LPI2C_Check_Busy(void);
+void LPI2C_Receive_Data(uint8_t *p_buffer, uint8_t n_bytes);
+uint8_t LPI2C_Read_Location(uint8_t target_address, uint8_t register_address,uint8_t* data);
+void LPI2C_init(void);
+uint8_t SAS_ReadMagnet_Status(uint8_t channel);
 uint8_t LPI2C_Generate_Stop(void);
-void LPI2C_Read_Register(uint8_t RegAddress);
-uint8_t LPI2C_Read_Location(uint8_t target_address,uint8_t register_address,uint8_t* data);
-uint8_t LPI2C_Select_MuxChannel(uint8_t target_address,uint8_t mux_channel,uint8_t* data);
-uint8_t LPI2C_CONF_Reg_Write(void);
+uint8_t LPI2C_Check_Busy(void);
 
-
-void LPI2C0_Master_IRQHandler(void);
 
 #endif /* LPI2C_LPI2C_H_ */

@@ -36,7 +36,6 @@
 
 #include "S32K116.h"
 #include "App_Flag.h"
-#include "clk.h"
 #include "analog_sense.h"
 #include "PWRMode_Driver.h"
 #include "GPIO_Driver.h"
@@ -52,6 +51,8 @@
 #include "app_sas.h"
 #include "AS5600.h"
 #include "watchdog_driver.h"
+#include "Clock_app.h"
+#include "Clock_Driver.h"
 #define SET 	1
 #define RESET 	0
 #define TRUE 	1
@@ -68,6 +69,8 @@
 #define CSASGRP1ARBID1SEC_DATA 0x423
 #define CSASGRP1ARBID960MSEC_DATA 0x4C6
 #define CSAS_SIZE8BYTE   0x08
+#define DELTA 3
+#define FILTER 0.5
 /*************************** struct********************************************/
 
 typedef struct
@@ -89,15 +92,13 @@ typedef struct
 /* Variable Extensions ************************************************************/
 extern uint8_t gu8CSASCanDataFrame[8];
 extern uint8_t CalOk;
-extern uint8_t  First;
-extern uint8_t lsb;
-extern uint8_t msb;
 extern flashdata_struct flash_struct_data;
 //extern uint32_t start_address;
 extern uint8_t clear[12];
 extern uint16_t gu16ZeroPositionS1;
 extern uint16_t gu16ZeroPositionS2;
 extern float speed;
+extern uint8_t zero_point_set;
 extern uint8_t IsSasAngleDataValid;
 extern uint8_t IsSasAngleExceed;
 extern uint8_t IsSasHardFault;
@@ -118,6 +119,42 @@ extern uint8_t IsSasAngleoutphase;
 extern uint8_t gu8STSnibble;
 extern float gu16FinalSasAngle;
 extern uint8_t decrement_flag;
+extern uint8_t SSAZ;
+extern uint16_t gu16AS5600s1Angle;
+extern uint16_t gu16AS5600s2Angle;
+extern uint16_t AngleDataCAN;
+extern uint16_t difference;
+extern float gu16AbsAngleS1;
+extern float gu16AbsAngleS2;
+extern uint16_t gu16RevCntS1;
+extern uint16_t gu16RevCntS2;
+extern float gu16AHFromS1;
+extern float gu16AHFromS2;
+extern float gu16FinalSasAngle;
+extern uint16_t gu16TempVar;
+extern uint8_t  gu8STS;
+extern float gu16CWAngleS1;
+extern float gu16CCWAngleS1;
+extern float gu16CWAngleS2;
+extern float gu16CCWAngleS2;
+extern uint16_t gu16PreviousAngleData1;
+extern uint16_t gu16CurrentAngleData1;
+extern uint16_t gu16PreviousAngleData2;
+extern uint16_t gu16CurrentAngleData2;
+extern uint16_t gu16PreviousAngleData1_phase;
+extern uint16_t gu16CurrentAngleData1_phase;
+extern uint16_t gu16PreviousAngleData2_phase;
+extern uint16_t gu16CurrentAngleData2_phase;
+extern float gu16phaseangleratio;
+extern uint8_t gu8CSASCanDataFrame_Anglelimit[8];
+extern uint8_t gu8STDIDbit;
+extern uint8_t isMovedS1;
+extern uint8_t isMovedS2;
+extern uint8_t phase_check;
+extern uint16_t TempVar;
+extern float TempVar_1;
+extern float Temp_angle;
+extern uint16_t velocity;
 /* Variable Extensions ************************************************************/
 
 /* Constant definitions                                          */
@@ -130,7 +167,7 @@ void Init_Sys_Peripherals(void);
 void Scheduler_Task(void);
 void Task_1ms(void);
 void Task_12ms(void);
-void Task_15ms(void);
+void Task_50ms(void);
 void Task_960msec(void);
 void Task_1sec(void);
 void Port_Init (void);

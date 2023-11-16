@@ -39,7 +39,7 @@
 #include "S32K116.h"
 #include "main.h"
 unsigned char Count_1ms_Reg = 0;
-unsigned char Count_15ms_Reg = 0;
+unsigned char Count_20ms_Reg = 0;
 unsigned char Count_10ms_Reg = 0;
 unsigned char Count_100ms_Reg = 0;
 unsigned char Count_1sec_Reg = 0;
@@ -83,7 +83,7 @@ uint8_t gu8SteeringAngleVelocity = 0x00;
 uint8_t gu8STSnibble=0;
 uint8_t gu8STDIDbit=0;
 uint8_t gu8CSASCanDataFrame[8] =
-		{ 0x00, 0x01, 0x98, 0x00, 0xF0, 0x00, 0x00, 0xB6 };
+		{ 0x00, 0x01, 0x98, 0x00, 0x78, 0x78, 0x78, 0xB6 };
 uint8_t gu8CSASCanDataFrame_960MS[8] =
 		{ 0x07, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00 };
 uint8_t gu8CSASCanDataFrame_1Sec[1] =
@@ -91,20 +91,14 @@ uint8_t gu8CSASCanDataFrame_1Sec[1] =
 uint8_t gu8CSASCanDataFrame_Anglelimit[8] =
 		{ 0xBD, 0x48, 0xA8, 0x00, 0x08, 0x00, 0x08, 0xEA };
 // Need to be removed !!!!!!!!!!!!!!!!!!!!!!!!
-static uint16_t difference = 0;
+uint16_t difference = 0;
 //static float Angle_difference=0;
 float speed=0;
 //-----------------------------------------------------------------------------------------------------
 
-static uint8_t DELTA =3;
 static uint16_t gu16Difference = 0;
 static uint16_t gu16CounterValue = 0;
-uint16_t SAS_140_CAN_Angle_Data=0;
 
-//#define S_GEAR_RATIO    (float)1.846 //( This is calculated with the H Gear / Gear@S1 = 48/26=1.85)
-//#define L_GEAR_RATIO    (float)1.6  //( This is calculated with the H Gear / Gear@S2 = 48/30=1.6)
-//#define S_GEAR_DEVIDER    (float)20.998 //( This is calculated with the (4095/360) * (Gear@S1 = 48/26=1.85)i.e 20.998 count for 1 degree)
-//#define L_GEAR_DEVIDER    (float)18.2   //( This is calculated with the (4095/360) * (Gear@S1 = 48/30=1.6)i.e 18.2 count for 1 degree)
 
 uint8_t u8Revolutions = 0;
 uint16_t u16AngleinCwFromS1 = 0;
@@ -233,7 +227,6 @@ void check_dorman_rights(void);
 int main(void)
 {
 
-
 	/* Initialize all the internal peripheral which are used in the SAS application - MCU S32K116 */
 	Init_Sys_Peripherals();
 
@@ -278,7 +271,8 @@ int main(void)
 /*   RETURN VALUES  :   None                                       */
 /*                                                                 */
 /*******************************************************************/
-void check_dorman_rights(void) {
+void check_dorman_rights(void)
+{
 	uint8_t check_char[6] = { 'E', 'p', 's', 'n', 'b', 'o' };
 	test_char_t1[0] = dorman[19];
 	test_char_t1[1] = dorman[20];
@@ -327,7 +321,7 @@ void NVIC_Init_IRQs(void)
 {
 	S32_NVIC->ICPR[0] |= (1 << LPI2C0_Master_Slave_IRQn); /* IRQ24-LPI2C0 : clr any pending IRQ*/
 	S32_NVIC->ISER[0] |= (1 << LPI2C0_Master_Slave_IRQn); /* IRQ24-LPI2C0: enable IRQ */
-	S32_NVIC->IPR[6]  |= S32_NVIC_IPR_PRI_0(0x01);		     /* IRQ24-LPI2C0: priority 1 of 0-15*/
+	S32_NVIC->IPR[6]  |=  S32_NVIC_IPR_PRI_0(0x01);		     /* IRQ24-LPI2C0: priority 1 of 0-15*/
 
 	S32_NVIC->ICPR[0] |= (1 << SCG_CMU_LVD_LVWSCG_IRQn); /* IRQ21-SCG_CMU_LVD_LVWSCG_IRQn : clr any pending IRQ*/
 	S32_NVIC->ISER[0] |= (1 << SCG_CMU_LVD_LVWSCG_IRQn); /* IRQ21-SCG_CMU_LVD_LVWSCG_IRQn: enable IRQ */
@@ -335,8 +329,8 @@ void NVIC_Init_IRQs(void)
 	/*************External interrupts *******************************************************/
 
 	S32_NVIC->ICPR[0] |= 1 << PORT_IRQn;/* IRQ9-PORT_IRQn: clr any pending IRQ*/
-    S32_NVIC->ISER[0]|= 1 << PORT_IRQn;/* IRQ9-PORT_IRQn: enable IRQ */
-	S32_NVIC->IPR[2] |=S32_NVIC_IPR_PRI_1(0x03);/* IRQ9-PORT_IRQn: priority 3 of 0-15*/
+    S32_NVIC->ISER[0] |= 1 << PORT_IRQn;/* IRQ9-PORT_IRQn: enable IRQ */
+	S32_NVIC->IPR[2]  |=S32_NVIC_IPR_PRI_1(0x03);/* IRQ9-PORT_IRQn: priority 3 of 0-15*/
 
 }
 /*******************************************************************/
@@ -376,7 +370,11 @@ void SysTick_Handler(void)
 	S32_SysTick->CVR = 0x00;
 
 	Flag.Msec1_Flag = SET;
-
+	if (++Count_20ms_Reg >= 50)
+	{
+		Task_50ms();
+		Count_20ms_Reg = 0;
+	}
 	if (++Count_1ms_Reg >= 12)
 	{
 		//Task_12ms();
@@ -404,11 +402,7 @@ void SysTick_Handler(void)
 		}
 
 	}
-	if (++Count_15ms_Reg >= 15)
-		{
-		 Task_15ms();
-		 Count_15ms_Reg=0;
-		}
+
 }
 
 /*******************************************************************/
@@ -431,12 +425,12 @@ void Scheduler_Task(void)
 		Flag.Msec1_Flag = RESET;
 	} else
 	{
+
 	}
 
 	if (Flag.Msec12_Flag == SET)
 	{
 		Task_12ms();/* 12ms task are done here */
-
 		Flag.Msec12_Flag = RESET;
 	} else
 	{
@@ -450,12 +444,14 @@ void Scheduler_Task(void)
 	{
 	}
 	if (Flag.Sec1_Flag == SET)
-		{
-			Task_1sec();/* 1s task are done here */
-			Flag.Sec1_Flag = RESET;
-		} else
-		{
-		}
+	{
+		Task_1sec();/* 1s task are done here */
+		Flag.Sec1_Flag = RESET;
+	}
+	else
+	{
+
+	}
 }
 
 /*******************************************************************/
@@ -478,44 +474,30 @@ void Task_1ms(void)
 	BattVoltage =BattVoltage*(690);
 	BattVoltage =BattVoltage/180;
 
-	if (BattVoltage <= 6)
+	if (BattVoltage <= 8)
 	{
 		Flag.BattVolt_Low = SET;
 		Flag.SAZS         = SET;
-		gu8STSnibble	 =0x08;
-		gu8CSASCanDataFrame[2] = 0x88;
+		gu8STSnibble	 &=~(1<<3);
+		gu8STSnibble	 |=(1<<3);
+		gu8CSASCanDataFrame[2] &= ~(1<<7);
 		gu8STDIDbit=0x08;
 	}
 	else if (BattVoltage >= 11)
 	{
 		Flag.BattVolt_Low = RESET;
 		Flag.SAZS         = RESET;
-		gu8STSnibble	=0x00;
+		gu8STSnibble	 &=~(1<<3);
+		gu8STDIDbit=0x00;
 	}
 
 }
+
 /*******************************************************************/
 /*                                                                 */
-/*   FUNCTION NAME  :   Task_15ms                                   */
+/*   FUNCTION NAME  :   Task_12ms                                  */
 /*                                                                 */
-/*   FUNCTION BRIEF :   Here 1ms tasks are done                    */
-/*                                                                 */
-/*                                                                 */
-/*   PARAMETERS     :   None                                       */
-/*                                                                 */
-/*   RETURN VALUES  :   None                                       */
-/*                                                                 */
-/*******************************************************************/
-void Task_15ms(void)
-{
-	gu16AS5600s1Angle = SAS_ReadAngelSensorAt(M_PCA9540B_MUX_CHANNEL0);
-	gu16AS5600s2Angle = SAS_ReadAngelSensorAt(M_PCA9540B_MUX_CHANNEL1);
-}
-/*******************************************************************/
-/*                                                                 */
-/*   FUNCTION NAME  :   Task_10ms                                  */
-/*                                                                 */
-/*   FUNCTION BRIEF :   Here 10ms tasks are done                   */
+/*   FUNCTION BRIEF :   Here 12ms tasks are done                   */
 /*                                                                 */
 /*                                                                 */
 /*   PARAMETERS     :   None                                       */
@@ -526,501 +508,38 @@ void Task_15ms(void)
 void Task_12ms(void)
 {
 
-
-	//gu16AS5600s1Angle = SAS_ReadAngelSensorAt(M_PCA9540B_MUX_CHANNEL0);
-	//gu16AS5600s2Angle = SAS_ReadAngelSensorAt(M_PCA9540B_MUX_CHANNEL1);
+	LPI2C_Transmit_Int();
 	CAN_App_Task();
-//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	/*First check the device is calibrated and the zero position is identified or not, if not set the calibrated flag and set the Magnetic sensor readings as the Zero position */
-
-
-      if((!CalOk) )
-      {
-    	//CalOk=1;//for testing
-		gu16ZeroPositionS1 = gu16AS5600s1Angle;
-		gu16ZeroPositionS2 = gu16AS5600s2Angle;
-		/*For the Zero position value of Sensor 1*/
-		gu16PreviousAngleData1 = gu16AS5600s1Angle;
-		gu16CurrentAngleData1 = gu16AS5600s1Angle;
-		/*For the Zero position value of Sensor 2*/
-		gu16PreviousAngleData2 = gu16AS5600s2Angle;
-		gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-      }
-      else if(!Cal_Stop)
-      {
-
-    	    gu16CurrentAngleData1 =gu16AS5600s1Angle;
-			gu16CurrentAngleData2 = gu16AS5600s2Angle;
-			flash_struct_data=Flash_read_struct();
-			gu16ZeroPositionS1=flash_struct_data.F_ZeroPositionS1;
-			gu16ZeroPositionS2=flash_struct_data.F_ZeroPositionS2;
-			if(isFlagpoweroff)
-			{
-
-				phase_check=1; //Clear out of phase error after power off
-				isMovedS1=0;
-				isMovedS2=0;
-				IsSasAngleoutphase=0;
-				if(flash_struct_data.F_flagcw==0x01)
-				{
-					gu16ClockWiseCounterS1=flash_struct_data.F_countervalueS1;
-					gu16ClockWiseCounterS2=flash_struct_data.F_countervalueS2;
-					gu16CounterClockWiseCounterS1=15000;
-					gu16CounterClockWiseCounterS2=15000;
-					isFlagCWS1=1;
-					isFlagCWS2=1;
-					isFlagCCWS1=0;
-					isFlagCCWS2=0;
-				    gu16PreviousAngleData1=flash_struct_data.F_previousS1;
-					gu16PreviousAngleData2=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
-				    gu16PreviousAngleData1_phase=flash_struct_data.F_previousS1;
-					gu16PreviousAngleData2_phase=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2_phase = flash_struct_data.F_previousS2;
-
-				}
-				else if(flash_struct_data.F_flagccw==0x01)
-				{
-					gu16ClockWiseCounterS1=15000;
-					gu16ClockWiseCounterS2=15000;
-					gu16CounterClockWiseCounterS1=flash_struct_data.F_countervalueS1;
-					gu16CounterClockWiseCounterS2=flash_struct_data.F_countervalueS2;
-					isFlagCWS1=0;
-					isFlagCWS2=0;
-					isFlagCCWS1=1;
-					isFlagCCWS2=1;
-				    gu16PreviousAngleData1=flash_struct_data.F_previousS1;
-					gu16PreviousAngleData2=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
-				    gu16PreviousAngleData1_phase=flash_struct_data.F_previousS1;
-					gu16PreviousAngleData2_phase=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2_phase = flash_struct_data.F_previousS2;
-				}
-				else if((flash_struct_data.F_flagcw==0) && (flash_struct_data.F_flagccw==0))
-				{
-					gu16ClockWiseCounterS1=15000;
-					gu16ClockWiseCounterS2=15000;
-					gu16CounterClockWiseCounterS1=15000;
-					gu16CounterClockWiseCounterS2=15000;
-					isFlagCWS1=0;
-					isFlagCWS2=0;
-					isFlagCCWS1=0;
-					isFlagCCWS2=0;
-				    gu16PreviousAngleData1=flash_struct_data.F_ZeroPositionS1;
-					gu16PreviousAngleData2=flash_struct_data.F_ZeroPositionS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_ZeroPositionS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_ZeroPositionS2;
-				    gu16PreviousAngleData1_phase=flash_struct_data.F_ZeroPositionS1;
-					gu16PreviousAngleData2_phase=flash_struct_data.F_ZeroPositionS2;
-			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_ZeroPositionS1;
-					gu16CurrentAngleData2_phase = flash_struct_data.F_ZeroPositionS2;
-				}
-
-
-			}
-
-
-
-
-
-
-			//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-			/*If the calibrated flag is set check the steering angle is moved to Clock Wise or Counter Clock Wise  */
-			if ((isFlagCWS1 == 0) && (isFlagCCWS1 == 0) && !(isFlagpoweroff))
-			{
-
-
-				//|CCW END|<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<|DELTA|ZERO_POSITION|DELTA|>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>|CW END|
-
-				/* Wait until there is significant difference from the Zero position NB: Currently the Delta is given as 2 may be this need to be increased */
-				/*If the significant difference occurred  between the u16CurrentAngleData0 and the u16PreviousAngleData0*/
-					if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1 + 15))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)<1500))
-					{ //DELTA WAS 20
-
-						isFlagCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
-						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-						gu16ClockWiseCounterS1 += (gu16CurrentAngleData1- gu16ZeroPositionS1);
-						gu16PreviousAngleData1 = gu16AS5600s1Angle;
-						gu16CurrentAngleData1 = gu16AS5600s1Angle;
-
-					}
-					else if ((gu16CurrentAngleData1 < (gu16ZeroPositionS1))&&((gu16ZeroPositionS1-gu16CurrentAngleData1)>2500) && ((4095-(gu16ZeroPositionS1-gu16CurrentAngleData1))>15))
-					{
-						isFlagCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
-						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-						gu16ClockWiseCounterS1 += (4095 - gu16ZeroPositionS1) + gu16CurrentAngleData1;
-								//(4095-(gu16ZeroPositionS1-gu16CurrentAngleData1));
-						gu16PreviousAngleData1 = gu16AS5600s1Angle;
-						gu16CurrentAngleData1 = gu16AS5600s1Angle;
-
-					}
-					else if (gu16CurrentAngleData1 < (gu16ZeroPositionS1 - 15)&&((gu16ZeroPositionS1-gu16CurrentAngleData1)<1500))
-					{ //DELTA WAS 20
-
-						isFlagCCWS1 = 1; /* The steering position moved and is assumed to be in counter clock wise direction */
-						isFlagCWS1 = 0; /* The steering position moved and is assumed to be in Counter Clock wise direction so set the  Clock wise flag set as Zero*/
-
-						gu16CounterClockWiseCounterS1 += (gu16ZeroPositionS1- gu16CurrentAngleData1);
-						gu16PreviousAngleData1 = gu16AS5600s1Angle;
-						gu16CurrentAngleData1 = gu16AS5600s1Angle;
-
-					}
-					else if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)>2500)&& ((4095-(gu16CurrentAngleData1-gu16ZeroPositionS1))>15))
-					{
-						isFlagCCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
-						isFlagCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-						gu16CounterClockWiseCounterS1 +=(4095 - gu16CurrentAngleData1) + gu16ZeroPositionS1;
-								//(4095-(gu16CurrentAngleData1-gu16ZeroPositionS1));
-						gu16PreviousAngleData1 = gu16AS5600s1Angle;
-						gu16CurrentAngleData1 = gu16AS5600s1Angle;
-
-					}
-				}
-
-			/*If the calibrated flag is set check the steering angle is moved to Clock Wise or Counter Clock Wise  */
-			if ((isFlagCWS2 == 0) && (isFlagCCWS2 == 0) && !(isFlagpoweroff))
-			{
-
-
-				//|CCW END|<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<|DELTA|ZERO_POSITION|DELTA|>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>|CW END|
-
-				/* Wait until there is significant difference from the Zero position NB: Currently the Delta is given as 2 may be this need to be increased */
-				/*If the significant difference occurred  between the u16CurrentAngleData0 and the u16PreviousAngleData0*/
-				if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2 + 15))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)<1500))
-				{ //DELTA WAS 20
-
-					isFlagCWS2  = 1;/*The steering position moved and is assumed to be in clockwise direction */
-					isFlagCCWS2 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-					gu16ClockWiseCounterS2 += (gu16CurrentAngleData2- gu16ZeroPositionS2);
-					gu16PreviousAngleData2 = gu16AS5600s2Angle;
-					gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-				}
-				else if ((gu16CurrentAngleData2 < (gu16ZeroPositionS2))&&((gu16ZeroPositionS2-gu16CurrentAngleData2)>2500) && ((4095-(gu16ZeroPositionS2-gu16CurrentAngleData2))>15))
-				{
-					isFlagCWS2 = 1;/*The steering position moved and is assumed to be in clockwise direction */
-					isFlagCCWS2 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-					gu16ClockWiseCounterS2 += (4095 - gu16ZeroPositionS2) + gu16CurrentAngleData2;
-					gu16PreviousAngleData2 = gu16AS5600s2Angle;
-					gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-				}
-				else if (gu16CurrentAngleData2 < (gu16ZeroPositionS2 - 15)&&((gu16ZeroPositionS2-gu16CurrentAngleData2)<1500))
-				{ //DELTA WAS 20
-
-					isFlagCCWS2 = 1; /* The steering position moved and is assumed to be in counter clock wise direction */
-					isFlagCWS2  = 0; /* The steering position moved and is assumed to be in Counter Clock wise direction so set the  Clock wise flag set as Zero*/
-
-					gu16CounterClockWiseCounterS2 += (gu16ZeroPositionS2- gu16CurrentAngleData2);
-					gu16PreviousAngleData2 = gu16AS5600s2Angle;
-					gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-				}
-				else if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)>2500) && ((4095-(gu16CurrentAngleData2-gu16ZeroPositionS2))>15))
-				{
-					isFlagCCWS2 = 1;/*The steering position moved and is assumed to be in clockwise direction */
-					isFlagCWS2 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-
-					gu16CounterClockWiseCounterS2 +=(4095 - gu16CurrentAngleData2) + gu16ZeroPositionS2;
-					gu16PreviousAngleData2 = gu16AS5600s2Angle;
-					gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-				}
-
-				}
-
-
-
-
-		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-		/* If there is a significant difference occurred then only we need to do the process, Since the last bit of the
-		 * magnetic sensor is having a small fluctuations to avoid this we are using a delta here  */
-
-		if (((isFlagCWS1 == 1) || (isFlagCCWS1 == 1))
-				&& ((((gu16PreviousAngleData1 > gu16CurrentAngleData1)
-						&& ((gu16PreviousAngleData1 - gu16CurrentAngleData1)
-								> DELTA))
-						|| ((gu16PreviousAngleData1 < gu16CurrentAngleData1)
-								&& ((gu16CurrentAngleData1
-										- gu16PreviousAngleData1) > DELTA))) || (gu16PreviousAngleData1==gu16CurrentAngleData1))&& !(isFlagpoweroff))
-		{
-           // isMovedS1=1;
-			if ((isFlagCWS1 == 1) && (isFlagCCWS1 == 0))
-			{
-
-				gu16ClockWiseCounterS1 = GetTheAngleCounterValueCW(
-						gu16CurrentAngleData1, gu16PreviousAngleData1,
-						gu16ClockWiseCounterS1, 1);
-			}
-			if ((isFlagCWS1 == 0) && (isFlagCCWS1 == 1))
-			{
-
-				gu16CounterClockWiseCounterS1 = GetTheAngleCounterValueCCW(
-						gu16CurrentAngleData1, gu16PreviousAngleData1,
-						gu16CounterClockWiseCounterS1, 1);
-
-			}
-			gu16PreviousAngleData1 = gu16AS5600s1Angle;
-			gu16CurrentAngleData1 = gu16AS5600s1Angle;
-		}
-		else
-		{
-			//isMovedS1=0;
-		}
-
-		if (((isFlagCWS2 == 1) || (isFlagCCWS2 == 1))
-				&& ((((gu16PreviousAngleData2 > gu16CurrentAngleData2)
-						&& ((gu16PreviousAngleData2 - gu16CurrentAngleData2)
-								> DELTA))
-						|| ((gu16PreviousAngleData2 < gu16CurrentAngleData2)
-								&& ((gu16CurrentAngleData2
-										- gu16PreviousAngleData2) > DELTA))) || (gu16PreviousAngleData2==gu16CurrentAngleData2)) && !(isFlagpoweroff))
-
-		{
-		//	isMovedS2=1;
-
-			if ((isFlagCWS2 == 1) && (isFlagCCWS2 == 0))
-			{
-
-				gu16ClockWiseCounterS2 = GetTheAngleCounterValueCW(
-						gu16CurrentAngleData2, gu16PreviousAngleData2,
-						gu16ClockWiseCounterS2, 2);
-			}
-			if ((isFlagCWS2 == 0) && (isFlagCCWS2 == 1))
-			{
-
-				gu16CounterClockWiseCounterS2 = GetTheAngleCounterValueCCW(
-						gu16CurrentAngleData2, gu16PreviousAngleData2,
-						gu16CounterClockWiseCounterS2, 2);
-			}
-			gu16PreviousAngleData2 = gu16AS5600s2Angle;
-			gu16CurrentAngleData2 = gu16AS5600s2Angle;
-
-		}
-		else
-		{
-			//isMovedS2=0;
-		}
-
-		if((!IsSasAngleoutphase) && (!IsSasAngleExceed) && (!IsSasHardFault))
-		{
-			Flash_array_store(flash_array);
-			Flash_write_struct();
-		}
-		else
-		{
-		//Do nothing
-		}
-
-
-		gu16CWAngleS1 = 0;
-		gu16CWAngleS2 = 0;
-		gu16CCWAngleS1 = 0;
-		gu16CCWAngleS2 = 0;
-
-		gu16AbsAngleS1 = 0;  // Represent aS
-		gu16AbsAngleS2 = 0;  // Represent aL
-
-		gu16RevCntS1 = 0;    // Represent nS
-		gu16RevCntS2 = 0;    // Represent nL
-
-		if ((isFlagCWS1 == 1) && (isFlagCWS2 == 1))
-		{
-			difference = 0;
-			difference = (gu16ClockWiseCounterS1 - 15000);
-			gu16TempVar = (int) (difference / 4095);
-			gu16RevCntS1 = gu16TempVar;  // revolution at S1  nS/nL
-			//gu16AbsAngleS1 =(int) ((difference - (gu16TempVar * 4095) )); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS1 = (int) ((difference % 4095)); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS1 *= .087912;
-
-			difference = 0;
-			difference = (gu16ClockWiseCounterS2 - 15000);
-			gu16TempVar = (int) (difference / 4095);
-			gu16RevCntS2 = gu16TempVar;  // revolution at S1  nS/nL
-			//gu16AbsAngleS2 =(int) ((difference - (gu16TempVar * 4095))); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS2 = (int) ((difference % 4095)); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS2 *= .087912;
-
-			gu16AHFromS1 =
-					((0.288889) * (gu16AbsAngleS1 + (gu16RevCntS1 * 360)));
-			gu16AHFromS2 =
-					((0.333334) * (gu16AbsAngleS2 + (gu16RevCntS2 * 360)));
-			gu16phaseangleratio=gu16AHFromS2/gu16AHFromS1;
-			//gu16FinalSasAngle =((((gu16AbsAngleS2*30)+(gu16AbsAngleS1*26))+(30*gu16RevCntS2*360)+(26*gu16RevCntS1*360))/180);
-
-			gu16FinalSasAngle = (gu16AbsAngleS2*26)+(gu16AbsAngleS1*25);
-
-			gu16FinalSasAngle += (26*gu16RevCntS2*360)+(25*gu16RevCntS1*360);
-
-			gu16FinalSasAngle /=130;
-		}
-
-		else if ((isFlagCCWS1 == 1) && (isFlagCCWS2 == 1))
-		{
-
-			// For the counter clock wise calculations
-			difference = 0;
-			difference = (gu16CounterClockWiseCounterS1 - 15000);
-			gu16TempVar = (int) (difference / 4095);
-			gu16RevCntS1 = gu16TempVar;  // revolution at S1  nS/nL
-			//gu16AbsAngleS1 =(int) ((difference - (gu16TempVar * 4095) )); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS1 = (int) ((difference % 4095)); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS1 *= .087912;
-
-			difference = 0;
-			difference = (gu16CounterClockWiseCounterS2 - 15000);
-			gu16TempVar = (int) (difference / 4095);
-			gu16RevCntS2 = gu16TempVar; // revolution at S1  nS/nL
-			//gu16AbsAngleS2 = (int) ((difference - (gu16TempVar * 4095))); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS2 = (int) ((difference % 4095)); // Absolute Angle at S1  aS/aL
-			gu16AbsAngleS2 *= .087912;
-
-			gu16AHFromS1 =
-					((0.288889) * (gu16AbsAngleS1 + (gu16RevCntS1 * 360)));
-			gu16AHFromS2 =
-					((0.333334) * (gu16AbsAngleS2 + (gu16RevCntS2 * 360)));
-			gu16phaseangleratio=gu16AHFromS2/gu16AHFromS1;
-			gu16FinalSasAngle = (gu16AbsAngleS2*26)+(gu16AbsAngleS1*25);
-
-			gu16FinalSasAngle += (26*gu16RevCntS2*360)+(25*gu16RevCntS1*360);
-
-			gu16FinalSasAngle /=130;
-
-		}
-
-		/***************angle  CAN data *********************/
-		if(CalOk)
-		{
-			gu8CSASCanDataFrame[0] =0;
-			gu8CSASCanDataFrame[1] =0;
-		}
-		if ((isFlagCWS1 == 1) && (isFlagCWS2 == 1))
-		{
-			AngleDataCAN =(uint16_t)(gu16FinalSasAngle / 1.5);
-			if(((float)((gu16FinalSasAngle / 1.5)-(uint16_t)((gu16FinalSasAngle / 1.5)))*10)>=5)
-			{
-			  AngleDataCAN +=1;
-			}
-
-		}
-		else if ((isFlagCCWS1 == 1) && (isFlagCCWS2 == 1))
-		{
-			AngleDataCAN =(uint16_t)(gu16FinalSasAngle / 1.5);
-			if(((float)((gu16FinalSasAngle / 1.5)-(uint16_t)((gu16FinalSasAngle / 1.5)))*10)>=5)			{
-			  AngleDataCAN +=1;
-			}
-			AngleDataCAN =~(uint16_t)(AngleDataCAN);
-			AngleDataCAN +=1;
-		}
-
-		if ((CalOk) && (((isFlagCCWS1 == 1) && (isFlagCCWS2 == 1))
-				|| (((isFlagCWS1 == 1) && (isFlagCWS2 == 1)))))
-		{
-
-			TempVar =AngleDataCAN;
-			gu8CSASCanDataFrame[1] = ((uint8_t) (TempVar));	//LSB
-			TempVar = AngleDataCAN >> 8;
-			gu8CSASCanDataFrame[0] = ((uint8_t) (TempVar));	//MSB
-			if(gu16FinalSasAngle>(float)(AngleDataCAN*1.5))
-			{
-				TempVar_1=(gu16FinalSasAngle-(float)(AngleDataCAN*1.5))*10;
-				gu8CSASCanDataFrame[4]=0;
-				gu8CSASCanDataFrame[4] = (uint8_t) (TempVar_1);
-			}
-			else
-			{
-				TempVar_1=((float)(AngleDataCAN*1.5)-gu16FinalSasAngle)*10;
-				gu8CSASCanDataFrame[4]=0;
-				gu8CSASCanDataFrame[4] =(uint8_t)(TempVar_1) | (1<<3);
-
-			}
-
-
-		}
-
-
-	}
-  	/***velocity and pulses*******/
-      if(CalOk)
-      {
-    	  velocity=0;
-    	  if(Temp_angle<gu16FinalSasAngle)
-    	  {
-    		  speed=gu16FinalSasAngle-Temp_angle;
-    		  velocity=speed *98;
-    	  }
-    	  else
-    	  {
-    		  speed=Temp_angle-gu16FinalSasAngle;
-    		  velocity=speed*98;
-    	  }
-    	  Temp_angle=gu16FinalSasAngle;
-      }
-      if(CalOk  && (!Cal_Stop))
-      {
-    	/* angle should be within 696 and gears need to be in phase*/
-    	  if(gu16FinalSasAngle<=696 && IsSasAngleDataValid )
-    		{
-    		  cal_stuck=0;
-       		  if((IsSasHardFault))
-        	 {
-       			gu8STSnibble	 |=1<<1;  //STS0 update to 1 any error
-       			gu8STDIDbit		=0x08;
-        	 }
-    		  IsSasAngleDataValid=1;
-    		  IsSasAngleExceed=0;
-    		  isFlagpoweroff_1=0;
-    		  gu8CSASCanDataFrame[0]&=0x0F;
-    		  gu8CSASCanDataFrame[0]|=(gu8STSnibble<<4);
-    		//  gu8CSASCanDataFrame[2]=0x98;
-    		  if(Flag.BattVolt_Low )
-    		  {
-    			  gu8CSASCanDataFrame[2]=0x88;
-    		  }
-    		  gu8CSASCanDataFrame[3]=0x00;
-    		  gu8CSASCanDataFrame[4] =(gu8CSASCanDataFrame[4]<<4)|(uint8_t)(velocity<<8);
-    		  gu8CSASCanDataFrame[5]=(uint8_t)(velocity);
-    		  gu8CSASCanDataFrame[6]|=gu8STDIDbit;
-    		  gu8CSASCanDataFrame[7]=(uint8_t)(CSAS_checksum_Byte(gu8CSASCanDataFrame));
-
-
-
-
-    CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
-    	}
-
-    	else
-    	{
-    		gu8STSnibble	 =0x0B;  //STS0 update to 1 any error
-    		CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
-    				CSAS_SIZE8BYTE, gu8CSASCanDataFrame_Anglelimit);
-    	}
-	}
-	else if(!Cal_Stop)
-	{
-
-		//gu8CSASCanDataFrame[7]=(uint8_t)(CSAS_checksum_Byte(gu8CSASCanDataFrame));
-        CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
-        		CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
-
-	}
-
+	App_SAS_Operations();
 
 }
 /*******************************************************************/
 /*                                                                 */
-/*   FUNCTION NAME  :   Task_1sec                                  */
+/*   FUNCTION NAME  :   Task_20ms                                  */
+/*                                                                 */
+/*   FUNCTION BRIEF :   Here 20ms tasks are done                   */
+/*                                                                 */
+/*                                                                 */
+/*   PARAMETERS     :   None                                       */
+/*                                                                 */
+/*   RETURN VALUES  :   None                                       */
+/*                                                                 */
+/*******************************************************************/
+void Task_50ms(void)
+{
+	if(canrxid!=0x20)
+	{
+		gu8STSnibble   &=~(1<<0);
+		gu8STSnibble   |=(1<<0);												//STS0 update to 1 any error
+
+ 	}
+	else
+	{
+		//Do nothing
+	}
+}
+/*******************************************************************/
+/*   FUNCTION NAME  :   Task_960msec                                 */
 /*                                                                 */
 /*   FUNCTION BRIEF :   Here 1second tasks are done                */
 /*                                                                 */
@@ -1036,30 +555,33 @@ void Task_960msec(void)
 	CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID960MSEC_DATA, CAN_ID_STD,
      		CSAS_SIZE8BYTE, gu8CSASCanDataFrame_960MS);
 }
-
+/*******************************************************************/
+/*   FUNCTION NAME  :   Task_1sec                                  */
+/*                                                                 */
+/*   FUNCTION BRIEF :   Here 1second tasks are done                */
+/*                                                                 */
+/*                                                                 */
+/*   PARAMETERS     :   None                                       */
+/*                                                                 */
+/*   RETURN VALUES  :   None                                       */
+/*                                                                 */
+/*******************************************************************/
 void Task_1sec(void)
 {
-    CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID1SEC_DATA, CAN_ID_STD,
-     		1, gu8CSASCanDataFrame_1Sec);
 
 /****************************Go to sleep when IGN OFF**********************************/
-	if (PIN_Input_Read(PTB,2)==1)
-	{
-		sleep_actions();
-		Set_Power_Mode(VLPS);
-		wakeup_actions();
-		gu8CSASCanDataFrame[2] &=0x7F;
-	}
-	else
-	{
-
-	}
+    CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID1SEC_DATA, CAN_ID_STD,
+     		1, gu8CSASCanDataFrame_1Sec);
 	if(canrxid!=0x20 && decrement_flag)
 	{
 		decrement_flag=0;
-		gu8STSnibble	 =0x0B;  //STS0 update to 1 any error
 		gu8increment_value =1;
         gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
+        if(zero_point_set)
+        {
+        	gu8CSASCanDataFrame[2]&=0x7F;
+        	gu8CSASCanDataFrame[2]|=0x80; //SAZS
+        }
    	 if((gu8CSASCanDataFrame[2] & 0xF0) == 0xF0)
    	 {
    		gu8CSASCanDataFrame[2] &= 0x8F;
@@ -1067,9 +589,25 @@ void Task_1sec(void)
 	}
 	else
 	{
+
 		canrxid=0;
-	//	gu8CSASCanDataFrame[2]=0x98;
+		one_time=0;
+		//gu8STSnibble   &=~(1<<0); //clear STS0 bit if 0x20 is not received
 	}
+/****************************Go to sleep when IGN OFF**********************************/
+	if (PIN_Input_Read(PTB,2)==1)
+	{
+		sleep_actions();
+		Set_Power_Mode(VLPS);
+		wakeup_actions();
+		gu8CSASCanDataFrame[2] &=0x7F;
+		gu8CSASCanDataFrame[2] |=0x80;  //Set SAZS after every power on reset
+	}
+	else
+	{
+
+	}
+
 	if(CalOk && (!phase_check))
 	{
 
@@ -1605,7 +1143,7 @@ void Init_Sys_Peripherals(void)
 	/* Disable the watch-dog timer before starting any initializations */
 	WDOG_disable();
 	/* Initialize the internal peripheral clock to 48Mhz which is its maximum for the S32K116 */
-	RUN_mode_48MHz();
+	Clock_App_Init();
 	/* Initialize the ADC to read the VBAT which is connected to the PTA7/ ADC0 */
 	ADC_Init();
 	/* Initialize the gpio's according to the application needs here */
@@ -1613,7 +1151,9 @@ void Init_Sys_Peripherals(void)
 	/* Flash Initialization function */
 	Flash_Init();
 	/* Initialize the I2C @250Khz  according to the application */
+	I2C_SENSOR_ON;
 	LPI2C_init();
+
 	/* Initialize the SysTic to generate various intervals for the task scheduler */
 	Init_SysTick();
 	/* Initialize the CAN peripheral to generate various intervals for the task scheduler */
@@ -1623,5 +1163,5 @@ void Init_Sys_Peripherals(void)
 	/* Non volatile interrupt configurations according to the application needs */
 	Low_voltage_detection_enable();
 	NVIC_Init_IRQs();
-
+	LPI2C_CONF_Reg_Write();
 }

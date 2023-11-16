@@ -44,10 +44,10 @@
 /**********************************************************************************/
 /*Constant and Macros                                             */
 /**********************************************************************************/
-#define I2C_SENSOR_OFF (PTD->PDOR =((PTD->PDOR & (~(uint32_t)(1<<3)))|(uint32_t)(1<<3)))
-#define I2C_SENSOR_ON (PTD->PDOR  =(PTD->PDOR & (~(uint32_t)(1<<3))))
-#define CAN_TRANS_OFF (PTD->PDOR =((PTD->PDOR & (~(uint32_t)(1<<2)))|(uint32_t)(1<<2)))
-#define CAN_TRANS_ON (PTD->PDOR  =(PTD->PDOR & (~(uint32_t)(1<<2))))
+#define I2C_SENSOR_ON   PIN_Set(PTD,3)//(PTD->PDOR =((PTD->PDOR & (~(uint32_t)(1<<3)))|(uint32_t)(1<<3)))
+#define I2C_SENSOR_OFF  PIN_Clear(PTD,3)//(PTD->PDOR  =(PTD->PDOR & (~(uint32_t)(1<<3))))
+#define CAN_TRANS_OFF  PIN_Set(PTD,2)//(PTD->PDOR =((PTD->PDOR & (~(uint32_t)(1<<2)))|(uint32_t)(1<<2)))
+#define CAN_TRANS_ON   PIN_Clear(PTD,2)//(PTD->PDOR  =(PTD->PDOR & (~(uint32_t)(1<<2))))
 /* Variable Extensions ************************************************/
 
 /* Variable Extensions ************************************************/

@@ -160,6 +160,7 @@ void App_SAS_Operations(void)
 
 
 
+
 			//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 			/*If the calibrated flag is set check the steering angle is moved to Clock Wise or Counter Clock Wise  */
 			if ((isFlagCWS1 == 0) && (isFlagCCWS1 == 0) && !(isFlagpoweroff))
@@ -170,42 +171,50 @@ void App_SAS_Operations(void)
 
 				/* Wait until there is significant difference from the Zero position NB: Currently the Delta is given as 2 may be this need to be increased */
 				/*If the significant difference occurred  between the u16CurrentAngleData0 and the u16PreviousAngleData0*/
-					if (gu16CurrentAngleData1 > (gu16ZeroPositionS1 + 10))
+	//				if (gu16CurrentAngleData1 > (gu16ZeroPositionS1 + 10))
+					if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1 +5))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)<3000))
 					{ //DELTA WAS 20
 						//isMovedS1=1;
 						isFlagCWS1 	= 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
+						Temp_State=FLAGCW;
 						gu16ClockWiseCounterS1 += (gu16CurrentAngleData1- gu16ZeroPositionS1);
 
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
 						gu16CurrentAngleData1 = gu16AS5600s1Angle;
 
 					}
-					else if ((gu16CurrentAngleData1 < (gu16ZeroPositionS1))&&((gu16ZeroPositionS1-gu16CurrentAngleData1)>3500))
+				//	else if ((gu16CurrentAngleData1 < (gu16ZeroPositionS1))&&((gu16ZeroPositionS1-gu16CurrentAngleData1)>3500))
+					else if((gu16CurrentAngleData1 < (gu16ZeroPositionS1))&&((gu16ZeroPositionS1-gu16CurrentAngleData1)>2500) && ((4095-(gu16ZeroPositionS1-gu16CurrentAngleData1))>5))
 					{
 						isFlagCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
+						Temp_State=FLAGCW;
 						gu16ClockWiseCounterS1 += (4095 - gu16ZeroPositionS1) + gu16CurrentAngleData1;
 								//(4095-(gu16ZeroPositionS1-gu16CurrentAngleData1));
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
 						gu16CurrentAngleData1 = gu16AS5600s1Angle;
 
 					}
-					else if (gu16CurrentAngleData1 < (gu16ZeroPositionS1 - 10))
+					//else if (gu16CurrentAngleData1 < (gu16ZeroPositionS1 - 10))
+					else if (gu16CurrentAngleData1 < (gu16ZeroPositionS1 - 5)&&((gu16ZeroPositionS1-gu16CurrentAngleData1)<3000))
 					{ //DELTA WAS 20
 						//isMovedS1=1;
 						isFlagCCWS1 = 1; /* The steering position moved and is assumed to be in counter clock wise direction */
 						isFlagCWS1 = 0; /* The steering position moved and is assumed to be in Counter Clock wise direction so set the  Clock wise flag set as Zero*/
+						Temp_State=FLAGCCW;
 						gu16CounterClockWiseCounterS1 += (gu16ZeroPositionS1
 								- gu16CurrentAngleData1);
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
 						gu16CurrentAngleData1 = gu16AS5600s1Angle;
 
 					}
-					else if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)>3500))
+			//		else if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)>3500))
+					else if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)>2500)&& ((4095-(gu16CurrentAngleData1-gu16ZeroPositionS1))>5))
 					{
 						isFlagCCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
+						Temp_State=FLAGCCW;
 						gu16CounterClockWiseCounterS1 +=(4095 - gu16CurrentAngleData1) + gu16ZeroPositionS1;
 								//(4095-(gu16CurrentAngleData1-gu16ZeroPositionS1));
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
@@ -223,42 +232,46 @@ void App_SAS_Operations(void)
 
 				/* Wait until there is significant difference from the Zero position NB: Currently the Delta is given as 2 may be this need to be increased */
 				/*If the significant difference occurred  between the u16CurrentAngleData0 and the u16PreviousAngleData0*/
-					if (gu16CurrentAngleData2 > (gu16ZeroPositionS2 + 10))
-					{ //DELTA WAS 20
-						isFlagCWS2 = 0;
-						isFlagCCWS2 = 1;
-						gu16CounterClockWiseCounterS2 += (gu16CurrentAngleData2- gu16ZeroPositionS2);
-						gu16PreviousAngleData2 = gu16AS5600s2Angle;
-						gu16CurrentAngleData2 = gu16AS5600s2Angle;
+		//			if (gu16CurrentAngleData2 > (gu16ZeroPositionS2 + 10))
+				if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2 + 5))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)<3000))
+				{ //DELTA WAS 20
+					isFlagCWS2 = 0;
+					isFlagCCWS2 = 1;
+					gu16CounterClockWiseCounterS2 += (gu16CurrentAngleData2- gu16ZeroPositionS2);
+					gu16PreviousAngleData2 = gu16AS5600s2Angle;
+					gu16CurrentAngleData2 = gu16AS5600s2Angle;
 
-					}
-					else if ((gu16CurrentAngleData2 < (gu16ZeroPositionS2))&&((gu16ZeroPositionS2-gu16CurrentAngleData2)>3500))
-					{
+				 }
+				//	else if ((gu16CurrentAngleData2 < (gu16ZeroPositionS2))&&((gu16ZeroPositionS2-gu16CurrentAngleData2)>3500))
+				else if ((gu16CurrentAngleData2 < (gu16ZeroPositionS2))&&((gu16ZeroPositionS2-gu16CurrentAngleData2)>2500) && ((4095-(gu16ZeroPositionS2-gu16CurrentAngleData2))>5))
+				{
 
-						isFlagCWS2 = 0;
-						isFlagCCWS2 = 1;
-						gu16CounterClockWiseCounterS2 += (4095 - gu16ZeroPositionS2) + gu16CurrentAngleData2;
-						gu16PreviousAngleData2 = gu16AS5600s2Angle;
-						gu16CurrentAngleData2 = gu16AS5600s2Angle;
+					isFlagCWS2 = 0;
+					isFlagCCWS2 = 1;
+					gu16CounterClockWiseCounterS2 += (4095 - gu16ZeroPositionS2) + gu16CurrentAngleData2;
+					gu16PreviousAngleData2 = gu16AS5600s2Angle;
+					gu16CurrentAngleData2 = gu16AS5600s2Angle;
 
-					}
-					else if (gu16CurrentAngleData2 < (gu16ZeroPositionS2 - 10))
-					{ //DELTA WAS 20
+				 }
+				 //else if (gu16CurrentAngleData2 < (gu16ZeroPositionS2 - 10))
+				else if (gu16CurrentAngleData2 < (gu16ZeroPositionS2 -5)&&((gu16ZeroPositionS2-gu16CurrentAngleData2)<3000))
+				 { //DELTA WAS 20
 						isFlagCWS2 = 1;
 						isFlagCCWS2 =0;
 						gu16ClockWiseCounterS2 += (gu16ZeroPositionS2- gu16CurrentAngleData2);
 						gu16PreviousAngleData2 = gu16AS5600s2Angle;
 						gu16CurrentAngleData2 = gu16AS5600s2Angle;
-					}
-					else if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)>3500))
-					{
+				  }
+				 //else if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)>3500))
+				else if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)>2500) && ((4095-(gu16CurrentAngleData2-gu16ZeroPositionS2))>5))
+				 {
 						isFlagCWS2 = 1;
 						isFlagCCWS2 =0;
 						gu16ClockWiseCounterS2 +=(4095 - gu16CurrentAngleData2) + gu16ZeroPositionS2;
 						gu16PreviousAngleData2 = gu16AS5600s2Angle;
 						gu16CurrentAngleData2 = gu16AS5600s2Angle;
 
-					}
+				  }
 					else
 					{
 						//Do nothing
@@ -266,6 +279,7 @@ void App_SAS_Operations(void)
 
 
 				}
+
 
 
 

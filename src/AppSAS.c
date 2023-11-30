@@ -177,7 +177,7 @@ void App_SAS_Operations(void)
 						//isMovedS1=1;
 						isFlagCWS1 	= 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-						Temp_State=FLAGCW;
+						//Temp_State=FLAGCW;
 						gu16ClockWiseCounterS1 += (gu16CurrentAngleData1- gu16ZeroPositionS1);
 
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
@@ -189,7 +189,7 @@ void App_SAS_Operations(void)
 					{
 						isFlagCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-						Temp_State=FLAGCW;
+						//Temp_State=FLAGCW;
 						gu16ClockWiseCounterS1 += (4095 - gu16ZeroPositionS1) + gu16CurrentAngleData1;
 								//(4095-(gu16ZeroPositionS1-gu16CurrentAngleData1));
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
@@ -202,7 +202,7 @@ void App_SAS_Operations(void)
 						//isMovedS1=1;
 						isFlagCCWS1 = 1; /* The steering position moved and is assumed to be in counter clock wise direction */
 						isFlagCWS1 = 0; /* The steering position moved and is assumed to be in Counter Clock wise direction so set the  Clock wise flag set as Zero*/
-						Temp_State=FLAGCCW;
+						//Temp_State=FLAGCCW;
 						gu16CounterClockWiseCounterS1 += (gu16ZeroPositionS1
 								- gu16CurrentAngleData1);
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;
@@ -214,7 +214,7 @@ void App_SAS_Operations(void)
 					{
 						isFlagCCWS1 = 1;/*The steering position moved and is assumed to be in clockwise direction */
 						isFlagCWS1 = 0;/*The steering position moved and is assumed to be in clockwise direction so set the Counter Clock wise flag set as Zero*/
-						Temp_State=FLAGCCW;
+						//Temp_State=FLAGCCW;
 						gu16CounterClockWiseCounterS1 +=(4095 - gu16CurrentAngleData1) + gu16ZeroPositionS1;
 								//(4095-(gu16CurrentAngleData1-gu16ZeroPositionS1));
 						gu16PreviousAngleData1 = gu16AS5600s1Angle;

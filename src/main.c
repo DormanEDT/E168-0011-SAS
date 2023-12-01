@@ -478,7 +478,6 @@ void Task_1ms(void)
 	{
 		Flag.BattVolt_Low = SET;
 		Flag.SAZS         = SET;
-		gu8STSnibble	 &=~(1<<3);
 		gu8STSnibble	 |=(1<<3);
 		gu8CSASCanDataFrame[2] &= ~(1<<7);
 		gu8STDIDbit=0x08;
@@ -529,7 +528,7 @@ void Task_50ms(void)
 {
 	if(canrxid!=0x20)
 	{
-		gu8STSnibble   &=~(1<<0);
+
 		gu8STSnibble   |=(1<<0);												//STS0 update to 1 any error
 
  	}

@@ -549,6 +549,10 @@ void App_SAS_Operations(void)
        			gu8STSnibble	=0x0B;  //STS1 update to 1 any error
        			gu8STDIDbit		=0x08;
        		  }
+       		  else
+       		  {
+       			gu8STSnibble	&=0xFD; //clear STS1
+       		  }
     		  IsSasAngleDataValid=1;
     		  IsSasAngleExceed=0;
     		  isFlagpoweroff_1=0;

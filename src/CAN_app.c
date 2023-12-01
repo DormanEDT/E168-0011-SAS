@@ -238,7 +238,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		}
 	 }
 
-	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07) && (can_msg[3] ==( can_msg[0]+0x20+7+0x07)))
+	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07) && (can_msg[6] ==( can_msg[0]+0x20+7+0x07)))
 		 {
 
 		 /*********************************TEST MODE***************************************/

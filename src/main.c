@@ -695,29 +695,30 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 
 	gu16CounterValue = CounterValue;
 
-if(PreviousAngle==CurrentAngle)
-{
-	gu16CounterValue = CounterValue;
-}
-else
-{
-	if(SensorSelect==1)
+	if(PreviousAngle==CurrentAngle)
 	{
-	if ((CurrentAngle > PreviousAngle)
-			&& (CurrentAngle - PreviousAngle) < 1250)
-	{
-
-		gu16Difference = (CurrentAngle - PreviousAngle);
-		gu16CounterValue += gu16Difference;
-
-	} else if ((CurrentAngle < PreviousAngle)
-			&& (PreviousAngle - CurrentAngle) > 2500)
-	{
-
-		gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
-		gu16CounterValue += gu16Difference;
-
+		gu16CounterValue = CounterValue;
 	}
+	else
+	{
+		if(SensorSelect==1)
+		{
+			if ((CurrentAngle > PreviousAngle)
+			&& (CurrentAngle - PreviousAngle) < 1250)
+			{
+
+				gu16Difference = (CurrentAngle - PreviousAngle);
+				gu16CounterValue += gu16Difference;
+
+			}
+			else if ((CurrentAngle < PreviousAngle)
+			&& (PreviousAngle - CurrentAngle) > 2500)
+			{
+
+				gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
+				gu16CounterValue += gu16Difference;
+
+			}
 
 	if ((PreviousAngle > CurrentAngle)
 			&& (PreviousAngle - CurrentAngle) < 1250)

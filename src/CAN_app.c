@@ -169,7 +169,8 @@ case  CSAS525ABSARBID_SCAN_REQ:
 	canrxid=CSAS525ABSARBID_SCAN_REQ;
 	decrement_flag=1;
 	gu8STSnibble &=~(1<<0);
-   	 if (((can_msg[0] & 0x0F)==0x0F) && (can_msg[1] == 0xFF)  && (can_msg[2] == 0x07) )
+   	 if (((can_msg[0] & 0x0F)==0x0F) && (can_msg[1] == 0xFF)  && (can_msg[2] == 0x07)
+   			 && (can_msg[6] ==((can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7) & 0xFF)))
 	 {
 	   	  /* CLEAR MEMORY COMMAND FROM ABS*/
 		byte0_msb=((can_msg[0] & 0xF0)>>4);
@@ -238,7 +239,8 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		}
 	 }
 
-	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07) && (can_msg[6] ==( can_msg[0]+0x20+7+0x07)))
+	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07)
+			 && (can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
 
 		 /*********************************TEST MODE***************************************/
@@ -246,12 +248,12 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		 		if((byte0_msb % 2) )
 		 		{
 		 	 	 Cal_Stop=0;
-				gu16FinalSasAngle=0;
-				IsCalibarationComp=1;
-				gu8STSnibble   &=~(1<<0); //Test mode clear STS0 bit
-				one_time=0;
-				switch(byte0_msb)
-				{
+		 	 	 gu16FinalSasAngle=0;
+		 	 	 IsCalibarationComp=1;
+		 	 	 gu8STSnibble   &=~(1<<0); //Test mode clear STS0 bit
+		 	 	 one_time=0;
+		 	 	 switch(byte0_msb)
+		 	 	 {
 					case 1:
 						gu8CSASCanDataFrame[2] =(0x08<<4)|0x08;
 					break;
@@ -287,7 +289,8 @@ case  CSAS525ABSARBID_SCAN_REQ:
 
 		 		}
 	 }
-	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07) && ((can_msg[3] & 0x0F)==0x0B) && (CalOk==0))
+	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07)  && (CalOk==0)
+			 &&(can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
 		 /*********************************CALIBRATION MODE***************************************/
 			byte0_msb=((can_msg[0] & 0xF0)>>4);

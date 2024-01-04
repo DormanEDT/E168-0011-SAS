@@ -47,7 +47,8 @@ unsigned char Count_1sec_Reg = 0;
 float ADC_Output = 0;
 unsigned int ADC_Test = 0;
 unsigned int ADC_Array[100] = { 0 };
-
+uint8_t flag_anticlockwise	=0;
+uint8_t	flag_clockwise		=0;
 #define BUFFER_SIZE         0x0Au          /* Size of data source */
 uint8_t Source_Buff[BUFFER_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa };
 uint8_t Destination_Buff[BUFFER_SIZE];
@@ -149,7 +150,7 @@ uint16_t gu16AS5600s2Angle = 0;
 uint16_t velocity=0;
 uint16_t gu16PreviousAngleData1 = 0;
 uint16_t gu16CurrentAngleData1 = 0;
-
+uint8_t Temp_State=0;
 uint16_t gu16PreviousAngleData2 = 0;
 uint16_t gu16CurrentAngleData2 = 0;
 uint16_t gu16PreviousAngleData1_phase = 0;
@@ -536,6 +537,90 @@ void Task_50ms(void)
 	{
 		//Do nothing
 	}
+	if(CalOk)
+	{
+	  if((Temp_angle<gu16FinalSasAngle) && (flag_anticlockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
+	  {
+		  speed=0;
+//		  if(Temp_State==FLAGCCW)
+//		  {
+			  speed=gu16FinalSasAngle-Temp_angle;
+//		  }
+//		  else
+//		  {
+//			  speed=gu16FinalSasAngle+Temp_angle;
+//		  }
+		 // velocity=(speed*20);
+		  velocity=(speed*14);
+		  gu8CSASCanDataFrame[4]&=0xF0;
+ 		  gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
+ 		  gu8CSASCanDataFrame[5]=(uint8_t)(velocity);
+ 		  Temp_State=FLAGCCW;
+	  }
+	  else if((Temp_angle>gu16FinalSasAngle) && (flag_anticlockwise) && ((Temp_angle-gu16FinalSasAngle)>=(FILTER)))
+	  {
+//		  if(Temp_State==FLAGCCW)
+//		  {
+			  speed=Temp_angle-gu16FinalSasAngle;
+//		  }
+//		  else
+//		  {
+//			  speed=Temp_angle+gu16FinalSasAngle;
+//		  }
+		 // velocity=(0xFFF-(uint16_t)(speed*20));
+		  velocity=(0xFFF-(uint16_t)(speed*14));
+		  gu8CSASCanDataFrame[4]&=0xF0;
+		  gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
+		  gu8CSASCanDataFrame[5]  =(uint8_t)(velocity);
+		  Temp_State=FLAGCCW;
+	  }
+	  else if((Temp_angle>gu16FinalSasAngle) && (flag_clockwise) && ((Temp_angle-gu16FinalSasAngle)>=(FILTER)))
+	  {
+//		if(Temp_State==FLAGCW)
+//		{
+			speed=Temp_angle-gu16FinalSasAngle;
+//		}
+//		else
+//		{
+//			speed=Temp_angle+gu16FinalSasAngle;
+//		}
+  	 //   velocity=(speed *20);
+		velocity=(speed*14);
+  	   	gu8CSASCanDataFrame[4]&=0xF0;
+     	gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
+     	gu8CSASCanDataFrame[5]=(uint8_t)(velocity);
+     	Temp_State=FLAGCW;
+	  }
+    else if((Temp_angle<gu16FinalSasAngle) && (flag_clockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
+    {
+//    	if(Temp_State==FLAGCW)
+//    	{
+    		speed=gu16FinalSasAngle-Temp_angle;
+//    	}
+//		else
+//		{
+//			speed=Temp_angle+gu16FinalSasAngle;
+//		}
+    	//velocity=(0xFFF-(uint16_t)(speed*20));
+    	velocity=(0xFFF-(uint16_t)(speed*14));
+    	gu8CSASCanDataFrame[4]&=0xF0;
+    	gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
+    	gu8CSASCanDataFrame[5]=(uint8_t)(velocity);
+    	Temp_State=FLAGCW;
+    }
+	else if(Temp_angle==gu16FinalSasAngle)
+	{
+		 velocity=0;
+		 gu8CSASCanDataFrame[4]&=0xF0;
+		 gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
+		 gu8CSASCanDataFrame[5]=(uint8_t)(velocity);
+	}
+	  Temp_angle=gu16FinalSasAngle;
+	}
+	else
+	{
+		//Do nothing
+	}
 }
 /*******************************************************************/
 /*   FUNCTION NAME  :   Task_960msec                                 */
@@ -571,20 +656,26 @@ void Task_1sec(void)
 /****************************Go to sleep when IGN OFF**********************************/
     CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID1SEC_DATA, CAN_ID_STD,
      		1, gu8CSASCanDataFrame_1Sec);
+
 	if(canrxid!=0x20 && decrement_flag)
 	{
+
 		decrement_flag=0;
-		gu8increment_value =1;
+		gu8increment_value=1;
         gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
         if(zero_point_set)
         {
         	gu8CSASCanDataFrame[2]&=0x7F;
         	gu8CSASCanDataFrame[2]|=0x80; //SAZS
         }
-   	 if((gu8CSASCanDataFrame[2] & 0xF0) == 0xF0)
-   	 {
-   		gu8CSASCanDataFrame[2] &= 0x8F;
-   	 }
+	   	 if((gu8CSASCanDataFrame[2] & 0xF0)==0x00)
+	   	 {
+	   		gu8CSASCanDataFrame[2] &= 0x0F;
+
+	   		gu8CSASCanDataFrame[2] |=0x80 ;
+
+	   	 }
+
 	}
 	else
 	{
@@ -599,8 +690,8 @@ void Task_1sec(void)
 		sleep_actions();
 		Set_Power_Mode(VLPS);
 		wakeup_actions();
-		gu8CSASCanDataFrame[2] &=0x7F;
-		gu8CSASCanDataFrame[2] |=0x80;  //Set SAZS after every power on reset
+//		gu8CSASCanDataFrame[2] &=0x7F;
+//		gu8CSASCanDataFrame[2] |=0x80;  //Set SAZS after every power on reset
 	}
 	else
 	{

@@ -7,8 +7,7 @@
 
 #include "main.h"
 #include "lpi2c.h"
-uint8_t flag_anticlockwise	=0;
-uint8_t	flag_clockwise		=0;
+
 /*****************************************************************************
  *
  * Function Name			: sleep_actions
@@ -42,8 +41,8 @@ void sleep_actions(void)
 void wakeup_actions(void)
 {
 	one_time=0;
-	gu8CSASCanDataFrame[2]&=0x7F;
-	gu8CSASCanDataFrame[2]|=0x80;
+//	gu8CSASCanDataFrame[2]&=0x7F;
+//	gu8CSASCanDataFrame[2]|=0x80;
 	PIN_Interrupt_Disable(PORTB,2);
 	ADC_Init();
 	I2C_SENSOR_ON;
@@ -537,7 +536,6 @@ void App_SAS_Operations(void)
      {
     	 //Do nothing
      }
-  	/***velocity and pulses*******/
       if(CalOk)
       {
 

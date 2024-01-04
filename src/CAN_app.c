@@ -169,8 +169,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 	canrxid=CSAS525ABSARBID_SCAN_REQ;
 	decrement_flag=1;
 	gu8STSnibble &=~(1<<0);
-   	 if (((can_msg[0] & 0x0F)==0x0F) && (can_msg[1] == 0xFF)  && (can_msg[2] == 0x07)
-   			 && (can_msg[6] ==((can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7) & 0xFF)))
+   	 if (((can_msg[0] & 0x0F)==0x0F) && (can_msg[1] == 0xFF)  && (can_msg[2] == 0x07))
 	 {
 	   	  /* CLEAR MEMORY COMMAND FROM ABS*/
 		byte0_msb=((can_msg[0] & 0xF0)>>4);
@@ -239,8 +238,8 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		}
 	 }
 
-	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07)
-			 && (can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
+	 else if (((can_msg[0] & 0x0F)==0x08) && (can_msg[1] == 0x00)  && (can_msg[2] == 0x07))
+		//	 && (can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
 
 		 /*********************************TEST MODE***************************************/
@@ -289,8 +288,8 @@ case  CSAS525ABSARBID_SCAN_REQ:
 
 		 		}
 	 }
-	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07)  && (CalOk==0)
-			 &&(can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
+	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07)  && (CalOk==0))
+			// &&(can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
 		 /*********************************CALIBRATION MODE***************************************/
 			byte0_msb=((can_msg[0] & 0xF0)>>4);
@@ -310,7 +309,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 					check_mem=0;
 				}
 			}
-			if((byte0_msb % 2)&&(check_mem)&&(one_time==0))
+			if((byte0_msb % 2)&&(check_mem)&&(one_time==0) && (CalOk==0))
 			{
 				one_time=1;
 				zero_point_set=1;
@@ -342,10 +341,14 @@ case  CSAS525ABSARBID_SCAN_REQ:
 				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
 				gu8CSASCanDataFrame[3] =can_msg[1];
 			}
+			else if((byte0_msb % 2))
+			{
+				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
+			}
 			else
 			{
-
-			}
+				//Do nothing
+		    }
 		 }
 		break;
 	default:

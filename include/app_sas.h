@@ -10,7 +10,8 @@
 
 #include "main.h"
 
-
+#define FLAGCW 		1
+#define FLAGCCW 	2
 //---------------------------------------------------------------------------------------------@
 //---------------------------------------------------------------------------------------------@
 
@@ -18,7 +19,8 @@ extern uint8_t u8RegReadValMagPresent;
 extern uint8_t u8RegReadValAngleLSB;
 extern uint8_t u8RegReadValAngleMSB;
 extern uint16_t u8RegAngleData;
-
+extern uint8_t flag_anticlockwise;
+extern uint8_t	flag_clockwise;
 
 /*********************************************************************************************************************************************/
 void SAS_10MsPeriodic_Msg(void);

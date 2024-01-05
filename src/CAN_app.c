@@ -341,7 +341,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
 				gu8CSASCanDataFrame[3] =can_msg[1];
 			}
-			else if((byte0_msb % 2))
+			else if((byte0_msb % 2)&&(check_mem))
 			{
 				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
 			}

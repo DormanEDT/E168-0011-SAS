@@ -156,6 +156,7 @@ void PORT_IRQHandler(void)
 {
 /********** You can write your code here to execute after interrupt******/
 	PORTB->PCR[2] |=PORT_PCR_ISF(1); //  ISF = 1 Clear the interrupt flag
-//	wakeup_actions();
+	gu8CSASCanDataFrame[2] &=0x7F;
+	gu8CSASCanDataFrame[2] |=0x80;  //Set SAZS after every power on reset
 
 }

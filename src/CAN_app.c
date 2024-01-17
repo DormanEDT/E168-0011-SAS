@@ -291,7 +291,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07)  && (CalOk==0))
 			// &&(can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
-		 /*********************************CALIBRATION MODE***************************************/
+		 /*********************************Zero Point MODE***************************************/
 			byte0_msb=((can_msg[0] & 0xF0)>>4);
 			if((byte0_msb % 2))
 			{
@@ -341,7 +341,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
 				gu8CSASCanDataFrame[3] =can_msg[1];
 			}
-			else if((byte0_msb % 2)&&(check_mem))
+			else if((byte0_msb % 2))
 			{
 				gu8CSASCanDataFrame[2] &=0x70;  //clear SAZS and SSAZ bit
 			}

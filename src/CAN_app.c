@@ -288,7 +288,7 @@ case  CSAS525ABSARBID_SCAN_REQ:
 
 		 		}
 	 }
-	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07)  && (CalOk==0))
+	 else if (((can_msg[0] & 0x0F)==0x00) && (can_msg[2] == 0x07))
 			// &&(can_msg[6] ==( can_msg[0]+can_msg[1]+can_msg[2]+can_msg[3]+0x20+7)))
 		 {
 		 /*********************************Zero Point MODE***************************************/

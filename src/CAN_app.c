@@ -68,6 +68,19 @@ uint8_t gu8CSASdiagnosticack[8]={0x01,0x50,0x00,0x00,0x00,0x00,0x00,0x00};
 uint8_t byte0_msb=0,byte1_msb;
 uint8_t one_time=0;
 uint8_t zero_point_set=0;
+uint8_t Boot_Enable = RESET;
+uint8_t Boot_Step = 0;
+uint8_t Tester_Present = FALSE;
+uint8_t can_comm_state = TRUE;
+uint8_t BOOT_Initial_Response[8]={0x03,0x5A,0xB0,0x13,0xAA,0xAA,0xAA,0xAA};
+uint8_t BOOT_Response1[8]= {0x01,0x50,0xAA,0xAA,0xAA,0xAA,0xAA,0xAA};
+uint8_t BOOT_Response2[8]= {0x01,0x68,0xAA,0xAA,0xAA,0xAA,0xAA,0xAA};
+uint8_t BOOT_Response3[8]= {0x02,0xE2,0x03,0xAA,0xAA,0xAA,0xAA,0xAA};
+uint8_t BOOT_Response4[8]= {0x01,0xE5,0xAA,0xAA,0xAA,0xAA,0xAA,0xAA};
+
+uint8_t BOOT_Response5[8]= {0x04,0x67,0x01,0x7D,0x26,0x44,0x4F,0x52};
+uint8_t BOOT_Response6[8]= {0x04,0x67,0x02,0x44,0x4F,0x52,0x4D,0x41};
+uint8_t BOOT_Response7[8]= {0x02,0x67,0x71,0xAA,0xAA,0xAA,0xAA,0xAA};
 /* Variable Declarations **********************************************/
 
 /* Function declarations ********************************************************/
@@ -87,7 +100,7 @@ void CAN_App_Config(void)
 {
 	baud_rate_t gBaudRate = CAN_BAUD_500K;
 
-	can_rx_msg_t can_app_rx_msgs[2];
+	can_rx_msg_t can_app_rx_msgs[4];
 
 	/*Receive Mail box filter1 configuration*/
 	can_app_rx_msgs[0].CAN_ID = 0x20;
@@ -96,6 +109,13 @@ void CAN_App_Config(void)
 	/*Receive Mail box filter2 configuration*/
 	can_app_rx_msgs[1].CAN_ID = 0x7B0;
 	can_app_rx_msgs[1].CAN_ID_TYPE = CAN_ID_STD;
+	/*Receive Mail box filter3 configuration*/
+	can_app_rx_msgs[2].CAN_ID = 0x101;
+	can_app_rx_msgs[2].CAN_ID_TYPE = CAN_ID_STD;
+
+	/*Receive Mail box filter4 configuration*/
+	can_app_rx_msgs[3].CAN_ID = 0x7E3;
+	can_app_rx_msgs[3].CAN_ID_TYPE = CAN_ID_STD;
 
 	CAN_Init(gBaudRate, can_app_rx_msgs, CAN_MAX_RX_MSG_FILTERS);
 	CAN_Port_Init();
@@ -351,6 +371,104 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		    }
 		 }
 		break;
+case BOOT_REQ_ID:
+
+    if((can_msg[0] == 0x02) && (can_msg[1] == 0x27))
+    {
+		if(can_msg[2]==0x01)
+		{
+			if(Boot_Step==0x00)
+			{
+			  Boot_Step |= 0x01;
+			  //CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response5);
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response5);
+
+			}
+		}
+		else if( (can_msg[2]==0x02) && (can_msg[3]==0xBE) && (can_msg[4]==0x05) && (can_msg[5]==0x4D) && (can_msg[6]==0x41) && (can_msg[7]==0x4E))
+		{
+			if(Boot_Step==0x01)
+			{
+			  Boot_Step |= 0x02;
+			  //  CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response6);
+			  CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response6);
+
+			}
+		}
+		else if ( (can_msg[2]==0x44) && (can_msg[3]==0x4F) && (can_msg[4]==0x52) && (can_msg[5]==0x4D) && (can_msg[6]==0x41) && (can_msg[7]==0x4E))
+		{
+			if(Boot_Step==0x03)
+			{
+				//CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response7);
+				CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response7);
+				Boot_Enable = SET;
+
+			}
+		}
+    }
+break;
+case TESTER_ID:
+
+	if((can_msg[0] == 0xFE) && (can_msg[1] == 0x01) )
+	{
+		if(can_msg[2] == 0x3E)
+		{
+		  Tester_Present = TRUE;
+		}
+		else if(can_msg[2] == 0x20)
+		{
+		  can_comm_state = TRUE;
+		  Tester_Present = FALSE;
+		}
+		else if(can_msg[2] == 0x28)
+		{
+			//   CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response2);
+			can_comm_state = FALSE;
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response2);
+		}
+		else if(can_msg[2] == 0xA2)
+		{
+			// CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response3);
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response3);
+
+		}
+		else
+		{
+
+		}
+
+	}
+	else if((can_msg[0] == 0xFE) && (can_msg[1] == 0x02) )
+	{
+		if((can_msg[2] == 0x1A) && (can_msg[3] == 0xB0))
+		{
+			//CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Initial_Response);
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Initial_Response);
+
+		}
+		else if((can_msg[2] == 0x10) && (can_msg[3] == 0x02))
+		{
+			// CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response1);
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response1);
+
+		}
+		else if((can_msg[2] == 0xA5) && (can_msg[3] == 0x01))
+		{
+			// CAN_Transmit(BOOT_RES_ID,0,0,8,&BOOT_Response4);
+			CAN_Transmit_msg(&gCANMailBoxNo, BOOT_RES_ID, CAN_ID_STD,8, BOOT_Response4);
+
+		}
+		else
+		{
+
+		}
+	}
+	else
+	{
+
+	}
+break;
+
 	default:
 		break;
 	}
@@ -401,6 +519,7 @@ uint8_t* CAN_App_GetRxBUF(void)
 	return RxBuff;
 
 }
+
 /***********************************************************************************
  *
  *   FUNCTION NAME   : CAN_App_Rx_Handler
@@ -423,5 +542,15 @@ void CAN_App_Rx_Handler(uint32_t rx_int_level)
 	if (rx_int_level & (1 << CAN_MSG_2_RX_MB_NO))
 	{
 		CAN_Receive_msg(CAN_MSG_2_RX_MB_NO);
+	}
+	/*Check for 6th mail box receive interrupt*/
+	if (rx_int_level & (1 << CAN_MSG_3_RX_MB_NO))
+	{
+		CAN_Receive_msg(CAN_MSG_3_RX_MB_NO);
+	}
+	/*Check for 7th mail box receive interrupt*/
+	if (rx_int_level & (1 << CAN_MSG_4_RX_MB_NO))
+	{
+		CAN_Receive_msg(CAN_MSG_4_RX_MB_NO);
 	}
 }

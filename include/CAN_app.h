@@ -69,6 +69,8 @@ extern uint8_t Cal_Stop;
 extern uint32_t canrxid;
 extern uint8_t gCANMailBoxNo;
 extern uint8_t one_time;
+extern uint8_t Boot_Enable;
+extern uint8_t can_comm_state;
 /* Function declarations ********************************************************/
 void CAN_App_Config(void);
 void CAN_App_Rx_Handler(uint32_t rx_int_level);

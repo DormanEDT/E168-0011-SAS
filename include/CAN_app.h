@@ -50,13 +50,18 @@
 #define CAN_ID_EXT1 0x1E12FF13
 #define CAN_ID_EXT2	0x12F85450
 
-#define CAN_MAX_RX_MSG_FILTERS 2
+#define CAN_MAX_RX_MSG_FILTERS 4
 #define CAN_MSG_1_RX_MB_NO 4
 #define CAN_MSG_2_RX_MB_NO 5
+#define CAN_MSG_3_RX_MB_NO 6
+#define CAN_MSG_4_RX_MB_NO 7
 #define CSAS524TOOLARBID_SCAN_REQ  (0X7B0)
 #define CSAS525ACKARBID_SCAN_TRX 0X7B8
 #define CSAS525ABSARBID_SCAN_REQ 0X20
 #define CSAS525SASARBID_SCAN_TRX 0X25
+#define TESTER_ID               0x101
+#define BOOT_REQ_ID             0x7E3
+#define BOOT_RES_ID             0x7EB
 #define CSAS525_SIZE8BYTE 0x08
 extern uint32_t RxCODE; /*< Received message buffer code 			*/
 extern uint32_t RxID; /*< Received message ID 					*/
@@ -69,6 +74,8 @@ extern uint8_t Cal_Stop;
 extern uint32_t canrxid;
 extern uint8_t gCANMailBoxNo;
 extern uint8_t one_time;
+extern uint8_t Boot_Enable;
+extern uint8_t can_comm_state;
 /* Function declarations ********************************************************/
 void CAN_App_Config(void);
 void CAN_App_Rx_Handler(uint32_t rx_int_level);

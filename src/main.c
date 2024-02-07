@@ -220,6 +220,7 @@ __attribute__ ((section(".Reserved2"))) const char Reserved2[32] = { 0xFF, 0xFF,
 uint32_t address;
 uint8_t dorman_flag = 0, size = 0;
 uint8_t test_char_t1[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+uint8_t EE_BL_Byte[5];
 void check_dorman_rights(void);
 
 /**** END - dorman rights checking constant array, prototype declaration and variable declaration****/
@@ -371,7 +372,7 @@ void SysTick_Handler(void)
 	S32_SysTick->CVR = 0x00;
 
 	Flag.Msec1_Flag = SET;
-	if (++Count_20ms_Reg >= 50)
+	if (++Count_20ms_Reg >= 70)
 	{
 		Task_50ms();
 		Count_20ms_Reg = 0;
@@ -511,7 +512,16 @@ void Task_12ms(void)
 	LPI2C_Transmit_Int();
 	CAN_App_Task();
 	App_SAS_Operations();
+	if(canrxid!=0x20)
+	{
 
+		gu8STSnibble   |=(1<<0);												//STS0 update to 1 any error
+
+ 	}
+	else
+	{
+		//Do nothing
+	}
 }
 /*******************************************************************/
 /*                                                                 */
@@ -527,30 +537,40 @@ void Task_12ms(void)
 /*******************************************************************/
 void Task_50ms(void)
 {
-	if(canrxid!=0x20)
+	if(canrxid!=0x20 && decrement_flag)
 	{
 
-		gu8STSnibble   |=(1<<0);												//STS0 update to 1 any error
+		decrement_flag=0;
+		gu8increment_value=1;
+        gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
+        if(zero_point_set)
+        {
+        	gu8CSASCanDataFrame[2]&=0x7F;
+        	gu8CSASCanDataFrame[2]|=0x80; //SAZS
+        }
+	   	 if((gu8CSASCanDataFrame[2] & 0xF0)==0x00)
+	   	 {
+	   		gu8CSASCanDataFrame[2] &= 0x0F;
 
- 	}
+	   		gu8CSASCanDataFrame[2] |=0x80 ;
+
+	   	 }
+
+	}
 	else
 	{
-		//Do nothing
+
+		canrxid=0;
+		one_time=0;
 	}
 	if(CalOk)
 	{
 	  if((Temp_angle<gu16FinalSasAngle) && (flag_anticlockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
 	  {
 		  speed=0;
-//		  if(Temp_State==FLAGCCW)
-//		  {
-			  speed=gu16FinalSasAngle-Temp_angle;
-//		  }
-//		  else
-//		  {
-//			  speed=gu16FinalSasAngle+Temp_angle;
-//		  }
-		 // velocity=(speed*20);
+
+		  speed=gu16FinalSasAngle-Temp_angle;
+
 		  velocity=(speed*14);
 		  gu8CSASCanDataFrame[4]&=0xF0;
  		  gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
@@ -559,15 +579,9 @@ void Task_50ms(void)
 	  }
 	  else if((Temp_angle>gu16FinalSasAngle) && (flag_anticlockwise) && ((Temp_angle-gu16FinalSasAngle)>=(FILTER)))
 	  {
-//		  if(Temp_State==FLAGCCW)
-//		  {
+
 			  speed=Temp_angle-gu16FinalSasAngle;
-//		  }
-//		  else
-//		  {
-//			  speed=Temp_angle+gu16FinalSasAngle;
-//		  }
-		 // velocity=(0xFFF-(uint16_t)(speed*20));
+
 		  velocity=(0xFFF-(uint16_t)(speed*14));
 		  gu8CSASCanDataFrame[4]&=0xF0;
 		  gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
@@ -576,15 +590,8 @@ void Task_50ms(void)
 	  }
 	  else if((Temp_angle>gu16FinalSasAngle) && (flag_clockwise) && ((Temp_angle-gu16FinalSasAngle)>=(FILTER)))
 	  {
-//		if(Temp_State==FLAGCW)
-//		{
 			speed=Temp_angle-gu16FinalSasAngle;
-//		}
-//		else
-//		{
-//			speed=Temp_angle+gu16FinalSasAngle;
-//		}
-  	 //   velocity=(speed *20);
+
 		velocity=(speed*14);
   	   	gu8CSASCanDataFrame[4]&=0xF0;
      	gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
@@ -593,15 +600,7 @@ void Task_50ms(void)
 	  }
     else if((Temp_angle<gu16FinalSasAngle) && (flag_clockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
     {
-//    	if(Temp_State==FLAGCW)
-//    	{
-    		speed=gu16FinalSasAngle-Temp_angle;
-//    	}
-//		else
-//		{
-//			speed=Temp_angle+gu16FinalSasAngle;
-//		}
-    	//velocity=(0xFFF-(uint16_t)(speed*20));
+    	speed=gu16FinalSasAngle-Temp_angle;
     	velocity=(0xFFF-(uint16_t)(speed*14));
     	gu8CSASCanDataFrame[4]&=0xF0;
     	gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
@@ -637,7 +636,7 @@ void Task_960msec(void)
 {
 
 	CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID960MSEC_DATA, CAN_ID_STD,
-     		CSAS_SIZE8BYTE, gu8CSASCanDataFrame_960MS);
+     				CSAS_SIZE8BYTE, gu8CSASCanDataFrame_960MS);
 }
 /*******************************************************************/
 /*   FUNCTION NAME  :   Task_1sec                                  */
@@ -657,41 +656,14 @@ void Task_1sec(void)
     CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID1SEC_DATA, CAN_ID_STD,
      		1, gu8CSASCanDataFrame_1Sec);
 
-	if(canrxid!=0x20 && decrement_flag)
-	{
 
-		decrement_flag=0;
-		gu8increment_value=1;
-        gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
-        if(zero_point_set)
-        {
-        	gu8CSASCanDataFrame[2]&=0x7F;
-        	gu8CSASCanDataFrame[2]|=0x80; //SAZS
-        }
-	   	 if((gu8CSASCanDataFrame[2] & 0xF0)==0x00)
-	   	 {
-	   		gu8CSASCanDataFrame[2] &= 0x0F;
-
-	   		gu8CSASCanDataFrame[2] |=0x80 ;
-
-	   	 }
-
-	}
-	else
-	{
-
-		canrxid=0;
-		one_time=0;
-		//gu8STSnibble   &=~(1<<0); //clear STS0 bit if 0x20 is not received
-	}
 /****************************Go to sleep when IGN OFF**********************************/
 	if (PIN_Input_Read(PTB,2)==1)
 	{
 		sleep_actions();
 		Set_Power_Mode(VLPS);
 		wakeup_actions();
-//		gu8CSASCanDataFrame[2] &=0x7F;
-//		gu8CSASCanDataFrame[2] |=0x80;  //Set SAZS after every power on reset
+
 	}
 	else
 	{
@@ -762,6 +734,16 @@ void Task_1sec(void)
 		 isMovedS1=0;
 		 isMovedS2=0;
 		 IsSasAngleoutphase=0;
+	}
+	if(Boot_Enable == SET)
+	{
+		EE_BL_Byte[0] = 0x00;
+		EE_BL_Byte[1] = 0x00;
+		EE_BL_Byte[2] = 0x00;
+		EE_BL_Byte[3] = 0x42;
+		EE_BL_Byte[4] = 0x00;
+		FLASH_DRV_EWrite(EEPROM_DATA, sizeof(EE_BL_Byte), EE_BL_Byte);
+	    SystemSoftwareReset();
 	}
 }
 //----------------------------------------------------------------------------------------------------------------------------------------

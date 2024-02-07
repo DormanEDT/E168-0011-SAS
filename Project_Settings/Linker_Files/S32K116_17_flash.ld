@@ -49,9 +49,12 @@ M_VECTOR_RAM_SIZE = DEFINED(__flash_vector_table__) ? 0x0 : 0x00C0;
 MEMORY
 {
   /* Flash */
-  m_interrupts          (RX)  : ORIGIN = 0x00000000, LENGTH = 0x000000C0
-  m_flash_config        (RX)  : ORIGIN = 0x00000400, LENGTH = 0x00000010
-  m_text                (RX)  : ORIGIN = 0x00000410, LENGTH = 0x0001FBF0
+/*  m_interrupts          (RX)  : ORIGIN = 0x00000000, LENGTH = 0x000000C0*/
+/*   m_flash_config        (RX)  : ORIGIN = 0x00000400, LENGTH = 0x00000010*/ 
+/*  m_text                (RX)  : ORIGIN = 0x00000410, LENGTH = 0x0001FBF0 */ 
+  m_interrupts          (RX)  : ORIGIN = 0x00005000, LENGTH = 0x000000C0
+  m_flash_config        (RX)  : ORIGIN = 0x00005400, LENGTH = 0x00000010
+  m_text                (RX)  : ORIGIN = 0x00005410, LENGTH = 0x0000C000
   m_dorman				(RX)  : ORIGIN = 0x0001FE00, LENGTH = 0x00000040	 
   m_SecSpec				(RX)  : ORIGIN = 0x0001FE40, LENGTH = 0x00000004 
   m_SecLibVer			(RX)  : ORIGIN = 0x0001FE44, LENGTH = 0x00000004 

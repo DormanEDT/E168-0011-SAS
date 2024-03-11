@@ -32,4 +32,5 @@ void SAS_Write_CONF_Reg(void);
 void LPI2C_CONF_Reg_Write(void);
 void sleep_actions(void);
 void wakeup_actions(void);
+void Position_Check(void);
 #endif /* APP_SAS_H_*/

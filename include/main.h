@@ -35,6 +35,7 @@
 /**********************************************************************************/
 
 #include "S32K116.h"
+#include "system_S32K116.h"
 #include "App_Flag.h"
 #include "analog_sense.h"
 #include "PWRMode_Driver.h"
@@ -155,6 +156,11 @@ extern uint16_t TempVar;
 extern float TempVar_1;
 extern float Temp_angle;
 extern uint16_t velocity;
+extern uint8_t gflag_5sec;
+extern uint8_t gTime;
+extern uint8_t can_comm_state;
+extern uint8_t first_read;
+extern uint16_t gu16Difference;
 /* Variable Extensions ************************************************************/
 
 /* Constant definitions                                          */

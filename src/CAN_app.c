@@ -138,6 +138,7 @@ void CAN_App_Task(void)
 
 	memcpy(can_msg, CAN_App_GetRxBUF(), sizeof(can_msg));
 
+
 	switch (CAN_App_GetRxID())
 	{
 
@@ -266,36 +267,45 @@ case  CSAS525ABSARBID_SCAN_REQ:
 		        byte0_msb=((can_msg[0] & 0xF0)>>4);
 		 		if((byte0_msb % 2) )
 		 		{
+		// 		 CalOk=0;
 		 	 	 Cal_Stop=0;
-		 	 	 gu16FinalSasAngle=0;
-		 	 	 IsCalibarationComp=1;
-		 	 	 gu8STSnibble   &=~(1<<0); //Test mode clear STS0 bit
-		 	 	 one_time=0;
-		 	 	 switch(byte0_msb)
-		 	 	 {
+				gu16FinalSasAngle=0;
+				IsCalibarationComp=1;
+				gu8STSnibble   &=~(1<<0); //Test mode clear STS0 bit
+				one_time=0;
+				switch(byte0_msb)
+				{
 					case 1:
-						gu8CSASCanDataFrame[2] =(0x08<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x09<<4);
 					break;
 					case 3:
-						gu8CSASCanDataFrame[2] =(0x09<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0A<<4);
 					break;
 					case 5:
-						gu8CSASCanDataFrame[2] =(0x0A<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0B<<4);
 					break;
 					case 7:
-						gu8CSASCanDataFrame[2] =(0x0B<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0C<<4);
 					break;
 					case 9:
-						gu8CSASCanDataFrame[2] =(0x0C<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0D<<4);
 					break;
 					case 11:
-						gu8CSASCanDataFrame[2] =(0x0D<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0E<<4);
 					break;
 					case 13:
-						gu8CSASCanDataFrame[2] =(0x0E<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x0F<<4);
 					break;
 					case 15:
-						gu8CSASCanDataFrame[2] =(0x0F<<4)|0x08;
+						gu8CSASCanDataFrame[2] &=0x0F;
+						gu8CSASCanDataFrame[2] |=(0x08<<4);
 					break;
 					default:
 						break;
@@ -533,15 +543,17 @@ uint8_t* CAN_App_GetRxBUF(void)
  ***********************************************************************************/
 void CAN_App_Rx_Handler(uint32_t rx_int_level)
 {
-	/*Check for 4th mail box receive interrupt*/
-	if (rx_int_level & (1 << CAN_MSG_1_RX_MB_NO))
+	if(Tester_Present == FALSE)
 	{
-		CAN_Receive_msg(CAN_MSG_1_RX_MB_NO);
-	}
+		if (rx_int_level & (1 << CAN_MSG_1_RX_MB_NO))
+		{
+			CAN_Receive_msg(CAN_MSG_1_RX_MB_NO);
+		}
 	/*Check for 5th mail box receive interrupt*/
-	if (rx_int_level & (1 << CAN_MSG_2_RX_MB_NO))
-	{
-		CAN_Receive_msg(CAN_MSG_2_RX_MB_NO);
+		if (rx_int_level & (1 << CAN_MSG_2_RX_MB_NO))
+		{
+			CAN_Receive_msg(CAN_MSG_2_RX_MB_NO);
+		}
 	}
 	/*Check for 6th mail box receive interrupt*/
 	if (rx_int_level & (1 << CAN_MSG_3_RX_MB_NO))

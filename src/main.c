@@ -37,13 +37,15 @@
 /* +--------------+----------+---------------------------------------------------+ */
 /***********************************************************************************/
 #include "S32K116.h"
+#include "system_S32K116.h"
 #include "main.h"
 unsigned char Count_1ms_Reg = 0;
 unsigned char Count_20ms_Reg = 0;
 unsigned char Count_10ms_Reg = 0;
 unsigned char Count_100ms_Reg = 0;
 unsigned char Count_1sec_Reg = 0;
-
+uint8_t Receive_Check=0;
+uint8_t magnet_present_check=1;
 float ADC_Output = 0;
 unsigned int ADC_Test = 0;
 unsigned int ADC_Array[100] = { 0 };
@@ -97,8 +99,8 @@ uint16_t difference = 0;
 float speed=0;
 //-----------------------------------------------------------------------------------------------------
 
-static uint16_t gu16Difference = 0;
-static uint16_t gu16CounterValue = 0;
+uint16_t gu16Difference = 0;
+uint16_t gu16CounterValue = 0;
 
 
 uint8_t u8Revolutions = 0;
@@ -221,6 +223,9 @@ uint32_t address;
 uint8_t dorman_flag = 0, size = 0;
 uint8_t test_char_t1[6] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 uint8_t EE_BL_Byte[5];
+uint8_t gTime=0;
+uint8_t gflag_5sec			= 0;
+uint8_t first_read=0;
 void check_dorman_rights(void);
 
 /**** END - dorman rights checking constant array, prototype declaration and variable declaration****/
@@ -243,12 +248,16 @@ int main(void)
 	{
 		CalOk=1;
 		IsCalibarationComp=1;
-
+		isFlagpoweroff=1;
+		gu8CSASCanDataFrame[2] &=0x0F;
+		gu8CSASCanDataFrame[2] |=0x80;
 	}
 	else
 	{
 		F_CalOk=0;
 		CalOk=0;
+		gu8CSASCanDataFrame[2] &=0x0F;
+		gu8CSASCanDataFrame[2] |=0x80;
 	}
 
 	while (1)
@@ -509,18 +518,49 @@ void Task_1ms(void)
 void Task_12ms(void)
 {
 
-	LPI2C_Transmit_Int();
-	CAN_App_Task();
-	App_SAS_Operations();
-	if(canrxid!=0x20)
+	if(magnet_present_check==1)
 	{
+		DISABLE_INTERRUPTS();
+	  //check magnet is present or not
+		SAS_ReadMagnet_Status(M_PCA9540B_MUX_CHANNEL0);
 
-		gu8STSnibble   |=(1<<0);												//STS0 update to 1 any error
+		SAS_ReadMagnet_Status(M_PCA9540B_MUX_CHANNEL1);
+		magnet_present_check=0;
+		ENABLE_INTERRUPTS();
 
- 	}
+	}
 	else
 	{
-		//Do nothing
+
+		if (PIN_Input_Read(PTB,2)==1)
+		{
+			sleep_actions();
+			Set_Power_Mode(VLPS);
+			wakeup_actions();
+
+		}
+		else
+		{
+			LPI2C_Transmit_Int();
+			if(first_read)
+			{
+				CAN_App_Task();
+				App_SAS_Operations();
+
+				if(Receive_Check!=0x20)
+				{
+					gu8STSnibble &=0xFE;
+					gu8STSnibble |=(1<<0);												//STS0 update to 1 any error
+
+				}
+				else
+				{
+					Receive_Check=0;
+				}
+			}
+
+		}
+
 	}
 }
 /*******************************************************************/
@@ -537,39 +577,14 @@ void Task_12ms(void)
 /*******************************************************************/
 void Task_50ms(void)
 {
-	if(canrxid!=0x20 && decrement_flag)
-	{
-
-		decrement_flag=0;
-		gu8increment_value=1;
-        gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
-        if(zero_point_set)
-        {
-        	gu8CSASCanDataFrame[2]&=0x7F;
-        	gu8CSASCanDataFrame[2]|=0x80; //SAZS
-        }
-	   	 if((gu8CSASCanDataFrame[2] & 0xF0)==0x00)
-	   	 {
-	   		gu8CSASCanDataFrame[2] &= 0x0F;
-
-	   		gu8CSASCanDataFrame[2] |=0x80 ;
-
-	   	 }
-
-	}
-	else
-	{
-
-		canrxid=0;
-		one_time=0;
-	}
 	if(CalOk)
 	{
+
 	  if((Temp_angle<gu16FinalSasAngle) && (flag_anticlockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
 	  {
 		  speed=0;
 
-		  speed=gu16FinalSasAngle-Temp_angle;
+			  speed=gu16FinalSasAngle-Temp_angle;
 
 		  velocity=(speed*14);
 		  gu8CSASCanDataFrame[4]&=0xF0;
@@ -590,6 +605,7 @@ void Task_50ms(void)
 	  }
 	  else if((Temp_angle>gu16FinalSasAngle) && (flag_clockwise) && ((Temp_angle-gu16FinalSasAngle)>=(FILTER)))
 	  {
+
 			speed=Temp_angle-gu16FinalSasAngle;
 
 		velocity=(speed*14);
@@ -600,7 +616,9 @@ void Task_50ms(void)
 	  }
     else if((Temp_angle<gu16FinalSasAngle) && (flag_clockwise) && ((gu16FinalSasAngle-Temp_angle)>=(FILTER)))
     {
-    	speed=gu16FinalSasAngle-Temp_angle;
+
+    		speed=gu16FinalSasAngle-Temp_angle;
+
     	velocity=(0xFFF-(uint16_t)(speed*14));
     	gu8CSASCanDataFrame[4]&=0xF0;
     	gu8CSASCanDataFrame[4] |=(uint8_t)((velocity&0xFF00)>>8);
@@ -652,24 +670,46 @@ void Task_960msec(void)
 void Task_1sec(void)
 {
 
-/****************************Go to sleep when IGN OFF**********************************/
+	   if((gTime<=5) && !(gflag_5sec))
+	   {
+		   gTime++;
+	   }
+	   else
+	   {
+		   gflag_5sec=1;
+		   gTime=0;
+
+	   }
+
     CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID1SEC_DATA, CAN_ID_STD,
      		1, gu8CSASCanDataFrame_1Sec);
 
 
 /****************************Go to sleep when IGN OFF**********************************/
-	if (PIN_Input_Read(PTB,2)==1)
+	if((canrxid!=0x20) && (decrement_flag) && (first_read))
 	{
-		sleep_actions();
-		Set_Power_Mode(VLPS);
-		wakeup_actions();
+		decrement_flag=0;
+		gu8increment_value =1;
+        gu8CSASCanDataFrame[2]=(gu8CSASCanDataFrame[2]+(gu8increment_value << 4));
+        if(zero_point_set)
+        {
+        	gu8CSASCanDataFrame[2]&=0x7F;
+        	gu8CSASCanDataFrame[2]|=0x80; //SAZS
+        }
+	   	 if((gu8CSASCanDataFrame[2] & 0xF0)==0x00)
+	   	 {
+	   		gu8CSASCanDataFrame[2] &= 0x0F;
 
+	   		gu8CSASCanDataFrame[2] |=0x80 ;
+
+	   	 }
 	}
 	else
 	{
 
+		canrxid=0;
+		one_time=0;
 	}
-
 	if(CalOk && (!phase_check))
 	{
 
@@ -774,33 +814,33 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 	}
 	else
 	{
-		if(SensorSelect==1)
-		{
-			if ((CurrentAngle > PreviousAngle)
-			&& (CurrentAngle - PreviousAngle) < 1250)
-			{
+	if(SensorSelect==1)
+	{
+	if ((CurrentAngle > PreviousAngle)
+			&& (CurrentAngle - PreviousAngle) < 3200)
+	{
 
-				gu16Difference = (CurrentAngle - PreviousAngle);
-				gu16CounterValue += gu16Difference;
+		gu16Difference = (CurrentAngle - PreviousAngle);
+		gu16CounterValue += gu16Difference;
 
-			}
-			else if ((CurrentAngle < PreviousAngle)
-			&& (PreviousAngle - CurrentAngle) > 2500)
-			{
+	}
+	else if ((CurrentAngle < PreviousAngle)
+			&& (PreviousAngle - CurrentAngle) > 3200)
+	{
 
-				gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
-				gu16CounterValue += gu16Difference;
+		gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
+		gu16CounterValue += gu16Difference;
 
-			}
+	}
 
 	if ((PreviousAngle > CurrentAngle)
-			&& (PreviousAngle - CurrentAngle) < 1250)
+			&& (PreviousAngle - CurrentAngle) < 3200)
 	{
 
 		gu16Difference = (PreviousAngle - CurrentAngle);
 		gu16CounterValue -= gu16Difference;
 
-		if (gu16CounterValue <= 15005)
+		if (gu16CounterValue <= 15003)
 		{		    //was 15020
 			if (SensorSelect == 1)
 			{
@@ -815,13 +855,13 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 		}
 	}
 	else if ((CurrentAngle > PreviousAngle)
-			&& (CurrentAngle - PreviousAngle) > 2500)
+			&& (CurrentAngle - PreviousAngle) > 3200)
 	{
 
 		gu16Difference = (4095 - CurrentAngle) + PreviousAngle;
 		gu16CounterValue -= gu16Difference;
 
-		if (gu16CounterValue <= 15005)
+		if (gu16CounterValue <= 15003)
 		{		    //was 15020
 
 			if (SensorSelect == 1)
@@ -839,7 +879,7 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 	else if(SensorSelect==2)
 	{
 		if ((CurrentAngle > PreviousAngle)
-				&& (CurrentAngle - PreviousAngle) < 1250)
+				&& (CurrentAngle - PreviousAngle) < 3200)
 		{
 
 			gu16Difference = (CurrentAngle - PreviousAngle);
@@ -860,7 +900,7 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 
 		}
 		else if ((CurrentAngle < PreviousAngle)
-				&& (PreviousAngle - CurrentAngle) > 2500)
+				&& (PreviousAngle - CurrentAngle) > 3200)
 		{
 
 			gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
@@ -882,7 +922,7 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 		}
 
 		if ((PreviousAngle > CurrentAngle)
-				&& (PreviousAngle - CurrentAngle) < 1250)
+				&& (PreviousAngle - CurrentAngle) < 3200)
 		{
 
 			gu16Difference = (PreviousAngle - CurrentAngle);
@@ -891,7 +931,7 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 
 		}
 		else if ((CurrentAngle > PreviousAngle)
-				&& (CurrentAngle - PreviousAngle) > 2500)
+				&& (CurrentAngle - PreviousAngle) > 3200)
 		{
 
 			gu16Difference = (4095 - CurrentAngle) + PreviousAngle;
@@ -901,6 +941,8 @@ uint16_t GetTheAngleCounterValueCW(uint16_t CurrentAngle,
 		}
 	}
 
+//}
+//}
 }
 
 	return (gu16CounterValue);
@@ -925,6 +967,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 {
 
 	gu16CounterValue = CounterValue;
+
 	if(PreviousAngle==CurrentAngle)
 	{
 		gu16CounterValue = CounterValue;
@@ -934,7 +977,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 		if(SensorSelect==1)
 		{
 	if ((PreviousAngle > CurrentAngle)
-			&& (PreviousAngle - CurrentAngle) < 1250)
+			&& (PreviousAngle - CurrentAngle) < 3200)
 	{
 
 		gu16Difference = (PreviousAngle - CurrentAngle);
@@ -943,7 +986,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 	}
 
 	else if ((PreviousAngle < CurrentAngle)
-			&& (CurrentAngle - PreviousAngle) > 2500)
+			&& (CurrentAngle - PreviousAngle) > 3200)
 	{
 
 		gu16Difference = (4095 - CurrentAngle) + PreviousAngle;
@@ -952,7 +995,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 	}
 
 	if ((CurrentAngle > PreviousAngle)
-			&& (CurrentAngle - PreviousAngle) < 1250)
+			&& (CurrentAngle - PreviousAngle) < 3200)
 	{
 		gu16Difference = (CurrentAngle - PreviousAngle);
 		gu16CounterValue -= gu16Difference;
@@ -974,7 +1017,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 	}
 
 	else if ((PreviousAngle > CurrentAngle)
-			&& (PreviousAngle - CurrentAngle) > 2500)
+			&& (PreviousAngle - CurrentAngle) > 3200)
 	{
 
 		gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
@@ -996,7 +1039,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 		else if(SensorSelect==2)
 		{
 			if ((PreviousAngle > CurrentAngle)
-					&& (PreviousAngle - CurrentAngle) < 1250)
+					&& (PreviousAngle - CurrentAngle) < 3200)
 			{
 
 				gu16Difference = (PreviousAngle - CurrentAngle);
@@ -1018,7 +1061,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 			}
 
 			else if ((PreviousAngle < CurrentAngle)
-					&& (CurrentAngle - PreviousAngle) > 2500)
+					&& (CurrentAngle - PreviousAngle) > 3200)
 			{
 
 				gu16Difference = (4095 - CurrentAngle) + PreviousAngle;
@@ -1039,7 +1082,8 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 			}
 
 			if ((CurrentAngle > PreviousAngle)
-					&& (CurrentAngle - PreviousAngle) < 1250) {
+					&& (CurrentAngle - PreviousAngle) < 3200)
+			{
 				gu16Difference = (CurrentAngle - PreviousAngle);
 				gu16CounterValue += gu16Difference;
 
@@ -1047,7 +1091,7 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 			}
 
 			else if ((PreviousAngle > CurrentAngle)
-					&& (PreviousAngle - CurrentAngle) > 2500)
+					&& (PreviousAngle - CurrentAngle) > 3200)
 			{
 
 				gu16Difference = (4095 - PreviousAngle) + CurrentAngle;
@@ -1056,6 +1100,10 @@ uint16_t GetTheAngleCounterValueCCW(uint16_t CurrentAngle,
 			}
 		}
 	}
+
+
+
+
 	return (gu16CounterValue);
 }
 
@@ -1142,7 +1190,7 @@ flashdata_struct Flash_read_struct(void)
     }
     else
     {
-    	isFlagpoweroff=0x00;
+    //	isFlagpoweroff=0x00;
 
     }
 	if(flash_read_array[4]==0x01)

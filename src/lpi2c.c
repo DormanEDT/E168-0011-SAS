@@ -20,6 +20,8 @@ uint8_t anglelsb_data2=0;
 magnet_state_machine magnet_state=0;
 uint8_t error=0;
 uint8_t u8RegReadValMagPresent=0;
+uint8_t one_time_reject=0;
+
 void LPI2C_init(void)
 {
 
@@ -269,8 +271,16 @@ void LPI2C0_Master_Slave_IRQHandler(void)
 			anglelsb_data2 =   (uint8_t) LPI2C0->MRDR;
 			LPI2C0->MTDR = 0x0200;   //Generate Stop after receive completion
 			LPI2C0->MIER = 0x3F01;
-			gu16AS5600s1Angle=((anglelsb_data1<<8)|anglemsb_data1);
-			gu16AS5600s2Angle=((anglemsb_data2<<8)|anglelsb_data2);
+			if(one_time_reject)
+			{
+				gu16AS5600s1Angle=((anglelsb_data1<<8)|anglemsb_data1);
+				gu16AS5600s2Angle=((anglemsb_data2<<8)|anglelsb_data2);
+				first_read=1;
+			}
+			else
+			{
+				one_time_reject=1;
+			}
 		}
 	}
 	if((LPI2C0->MSR & (1 << 0))&&(LPI2C0->MIER & 0x01))

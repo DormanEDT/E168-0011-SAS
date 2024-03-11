@@ -7,7 +7,16 @@
 
 #include "main.h"
 #include "lpi2c.h"
-
+//uint8_t flag_anticlockwise	= 0;
+//uint8_t	flag_clockwise		= 0;
+//uint8_t gflag_5sec			= 0;
+uint8_t gSFRZ_fix           = 1;
+uint8_t wake_up              = 0;
+uint8_t previous_positions1  =0;
+uint8_t previous_positions2  =0;
+uint8_t current_positions1  =0;
+uint8_t current_positions2  =0;
+int position_difference=0;
 /*****************************************************************************
  *
  * Function Name			: sleep_actions
@@ -20,8 +29,11 @@ void sleep_actions(void)
 {
 	gu8STSnibble=1;
 	gu8CSASCanDataFrame[0]|=(gu8STSnibble<<4);
-	CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
+	if(can_comm_state == TRUE)
+	{
+		CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
 	        		CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+	}
 	ADC_Disable();
 	I2C_SENSOR_OFF;
 	CAN_TRANS_OFF;
@@ -41,18 +53,14 @@ void sleep_actions(void)
 void wakeup_actions(void)
 {
 	one_time=0;
-//	gu8CSASCanDataFrame[2]&=0x7F;
-//	gu8CSASCanDataFrame[2]|=0x80;
+	wake_up=1;
+	//magnet_present_check=1;
 	PIN_Interrupt_Disable(PORTB,2);
 	ADC_Init();
 	I2C_SENSOR_ON;
 	CAN_TRANS_ON;
 	PIN_Pull_Select(PORTA,2,PULL_UP);
 	PIN_Pull_Select(PORTA,3,PULL_UP);
-	//check magnet is present or not
-	SAS_ReadMagnet_Status(M_PCA9540B_MUX_CHANNEL0);
-	SAS_ReadMagnet_Status(M_PCA9540B_MUX_CHANNEL1);
-
 
 }
 void App_SAS_Operations(void)
@@ -72,15 +80,16 @@ void App_SAS_Operations(void)
      }
      else if(!Cal_Stop)
      {
-
-   	    gu16CurrentAngleData1 =gu16AS5600s1Angle;
+    	 	 gflag_5sec=1;
+    	 	 gu16CurrentAngleData1 =gu16AS5600s1Angle;
 			gu16CurrentAngleData2 = gu16AS5600s2Angle;
 			flash_struct_data=Flash_read_struct();
-			gu16ZeroPositionS1=flash_struct_data.F_ZeroPositionS1;
-			gu16ZeroPositionS2=flash_struct_data.F_ZeroPositionS2;
+		//	gu16ZeroPositionS1=flash_struct_data.F_ZeroPositionS1;
+		//	gu16ZeroPositionS2=flash_struct_data.F_ZeroPositionS2;
 			if(isFlagpoweroff)
 			{
-
+				gu16ZeroPositionS1=flash_struct_data.F_ZeroPositionS1;
+				gu16ZeroPositionS2=flash_struct_data.F_ZeroPositionS2;
 				phase_check=1; //Clear out of phase error after power off
 				isMovedS1=0;
 				isMovedS2=0;
@@ -97,8 +106,8 @@ void App_SAS_Operations(void)
 					isFlagCCWS2=0;
 				    gu16PreviousAngleData1=flash_struct_data.F_previousS1;
 					gu16PreviousAngleData2=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
+			  	 //   gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
+				//	gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
 				    gu16PreviousAngleData1_phase=flash_struct_data.F_previousS1;
 					gu16PreviousAngleData2_phase=flash_struct_data.F_previousS2;
 			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_previousS1;
@@ -117,8 +126,8 @@ void App_SAS_Operations(void)
 					isFlagCCWS2=1;
 				    gu16PreviousAngleData1=flash_struct_data.F_previousS1;
 					gu16PreviousAngleData2=flash_struct_data.F_previousS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
+			  	   // gu16CurrentAngleData1 =flash_struct_data.F_previousS1;
+				//	gu16CurrentAngleData2 = flash_struct_data.F_previousS2;
 				    gu16PreviousAngleData1_phase=flash_struct_data.F_previousS1;
 					gu16PreviousAngleData2_phase=flash_struct_data.F_previousS2;
 			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_previousS1;
@@ -136,8 +145,8 @@ void App_SAS_Operations(void)
 					isFlagCCWS2=0;
 				    gu16PreviousAngleData1=flash_struct_data.F_ZeroPositionS1;
 					gu16PreviousAngleData2=flash_struct_data.F_ZeroPositionS2;
-			  	    gu16CurrentAngleData1 =flash_struct_data.F_ZeroPositionS1;
-					gu16CurrentAngleData2 = flash_struct_data.F_ZeroPositionS2;
+			  	  //  gu16CurrentAngleData1 =flash_struct_data.F_ZeroPositionS1;
+				//	gu16CurrentAngleData2 = flash_struct_data.F_ZeroPositionS2;
 				    gu16PreviousAngleData1_phase=flash_struct_data.F_ZeroPositionS1;
 					gu16PreviousAngleData2_phase=flash_struct_data.F_ZeroPositionS2;
 			  	    gu16CurrentAngleData1_phase =flash_struct_data.F_ZeroPositionS1;
@@ -285,7 +294,8 @@ void App_SAS_Operations(void)
 		//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 		/* If there is a significant difference occurred then only we need to do the process, Since the last bit of the
 		 * magnetic sensor is having a small fluctuations to avoid this we are using a delta here  */
-
+if(!wake_up )
+{
 		if (((isFlagCWS1 == 1) || (isFlagCCWS1 == 1))
 				&& ((((gu16PreviousAngleData1 > gu16CurrentAngleData1)
 						&& ((gu16PreviousAngleData1 - gu16CurrentAngleData1)
@@ -366,7 +376,26 @@ void App_SAS_Operations(void)
 		{
 		//Do nothing
 		}
+}
+else
+{
+	Position_Check();
+	gu16PreviousAngleData1 = gu16AS5600s1Angle;
+	gu16CurrentAngleData1 = gu16AS5600s1Angle;
+	gu16PreviousAngleData2 = gu16AS5600s2Angle;
+	gu16CurrentAngleData2 = gu16AS5600s2Angle;
+    wake_up=0;
+}
 
+if(CalOk)
+{
+	Flash_array_store(flash_array);
+	Flash_write_struct();
+}
+else
+{
+//Do nothing
+}
 
 		gu16CWAngleS1 = 0;
 		gu16CWAngleS2 = 0;
@@ -567,23 +596,41 @@ void App_SAS_Operations(void)
     		  gu8CSASCanDataFrame[3]=0x00;
     		  gu8CSASCanDataFrame[6]=gu8STDIDbit;
     		  gu8CSASCanDataFrame[7]=(uint8_t)(CSAS_checksum_Byte(gu8CSASCanDataFrame));
-    		  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+       		  if(can_comm_state == TRUE)
+    			  {
+    				  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
+    					  CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+    			  }
     	  }
     	  else
     	  {
     		  gu8STSnibble	=0x0B;
     		  gu8CSASCanDataFrame[0]&=0x0F;
     		  gu8CSASCanDataFrame[0]|=(gu8STSnibble<<4);
-    		  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
-    				  	  	  	  CSAS_SIZE8BYTE, gu8CSASCanDataFrame_Anglelimit);
+       		  if(can_comm_state == TRUE)
+    			  {
+    				  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
+    					  CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+    			  }
     	  }
 	}
     else
 	{
     	  gu8CSASCanDataFrame[0]&=0x0F;
     	  gu8CSASCanDataFrame[0]|=(gu8STSnibble<<4);
-    	  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
-    			  	  	  	  CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+    	  if(gflag_5sec==0)
+    	  {
+    		  gu8CSASCanDataFrame[6]=0x08;
+    	  }
+    	  else
+    	  {
+    		  gu8CSASCanDataFrame[6]=0x00;
+    	  }
+   		  if(can_comm_state == TRUE)
+			  {
+				  CAN_Transmit_msg(&gCANMailBoxNo, CSASGRP1ARBID_DATA, CAN_ID_STD,
+					  CSAS_SIZE8BYTE, gu8CSASCanDataFrame);
+			  }
 	}
 
 
@@ -610,3 +657,228 @@ void LPI2C_CONF_Reg_Write(void)
 		while(LPI2C_Check_Busy());
 		LPI2C_Generate_Stop();
 }
+void Position_Check(void)
+{
+	if((gu16PreviousAngleData1>gu16ZeroPositionS1))
+	{
+		previous_positions1=(gu16PreviousAngleData1-gu16ZeroPositionS1)/(136.5);
+	}
+	else
+	{
+		previous_positions1=((4095-gu16ZeroPositionS1)+gu16PreviousAngleData1)/(136.5);
+	}
+	if((gu16CurrentAngleData1>gu16ZeroPositionS1))
+	{
+		current_positions1 =(gu16CurrentAngleData1-gu16ZeroPositionS1)/(136.5);
+	}
+	else
+	{
+		current_positions1=((4095-gu16ZeroPositionS1)+gu16CurrentAngleData1)/(136.5);
+	}
+	if((gu16PreviousAngleData2>gu16ZeroPositionS2))
+	{
+		previous_positions2=(gu16PreviousAngleData2-gu16ZeroPositionS2)/(141);
+	}
+	else
+	{
+		previous_positions2=((4095-gu16ZeroPositionS2)+gu16PreviousAngleData2)/(141);
+	}
+	if((gu16CurrentAngleData2>gu16ZeroPositionS2))
+	{
+		current_positions2 =(gu16CurrentAngleData2-gu16ZeroPositionS2)/(141);
+	}
+	else
+	{
+ 	  current_positions2=((4095-gu16ZeroPositionS2)+gu16CurrentAngleData2)/(141);
+
+	}
+	position_difference=current_positions1-current_positions2;
+
+if(	flash_struct_data.F_countervalueS1<16000)
+{
+		if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1 +5))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)<1000) )
+		{
+			isFlagCWS1 	= 1;
+			isFlagCCWS1 = 0;
+
+		}
+		else if((gu16CurrentAngleData1 < (gu16ZeroPositionS1))&&((gu16ZeroPositionS1-gu16CurrentAngleData1)>3000) && ((4095-(gu16ZeroPositionS1-gu16CurrentAngleData1))>5))
+		{
+			isFlagCWS1 	= 1;
+			isFlagCCWS1 = 0;
+		}
+		else if (gu16CurrentAngleData1 < (gu16ZeroPositionS1 - 5)&&((gu16ZeroPositionS1-gu16CurrentAngleData1)<1000))
+		{
+			isFlagCWS1 	= 0;
+			isFlagCCWS1 = 1;
+		}
+		else if ((gu16CurrentAngleData1 > (gu16ZeroPositionS1))&&((gu16CurrentAngleData1-gu16ZeroPositionS1)>3000)&& ((4095-(gu16CurrentAngleData1-gu16ZeroPositionS1))>5))
+		{
+			isFlagCWS1 	= 0;
+			isFlagCCWS1 = 1;
+		}
+		else
+		{
+			//Do nothing
+		}
+}
+else
+{
+
+}
+if(	flash_struct_data.F_countervalueS2<16000)
+{
+		if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2 +5))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)<1000))
+		{
+			isFlagCWS2 	= 0;
+			isFlagCCWS2 = 1;
+
+		}
+		else if((gu16CurrentAngleData2 < (gu16ZeroPositionS2))&&((gu16ZeroPositionS2-gu16CurrentAngleData2)>3000)
+				&& ((4095-(gu16ZeroPositionS2-gu16CurrentAngleData2))>5))
+		{
+			isFlagCWS2 	= 0;
+			isFlagCCWS2 = 1;
+		}
+		else if (gu16CurrentAngleData2 < (gu16ZeroPositionS2 - 5)&&((gu16ZeroPositionS2-gu16CurrentAngleData2)<1000))
+		{
+			isFlagCWS2 	= 1;
+			isFlagCCWS2 = 0;
+		}
+		else if ((gu16CurrentAngleData2 > (gu16ZeroPositionS2))&&((gu16CurrentAngleData2-gu16ZeroPositionS2)>3000)
+				&& ((4095-(gu16CurrentAngleData2-gu16ZeroPositionS2))>5))
+		{
+			isFlagCWS2 	= 1;
+			isFlagCCWS2 = 0;
+		}
+		else
+		{
+			//Do nothing
+		}
+}
+else
+{
+	//Do nothing
+}
+		if((((current_positions1>=current_positions2) && (position_difference>=0)) ||((current_positions1<=current_positions2)
+				&& (position_difference<0)) )&& (isFlagCWS1))
+
+		{
+			if (gu16CurrentAngleData1 < gu16PreviousAngleData1)
+
+				{
+					gu16Difference = (gu16PreviousAngleData1 - gu16CurrentAngleData1);
+					gu16ClockWiseCounterS1 += gu16Difference;
+					isFlagCWS1=1;
+					isFlagCCWS1=0;
+
+				}
+
+				else if ((gu16PreviousAngleData1 < gu16CurrentAngleData1) && (gu16CurrentAngleData1-gu16PreviousAngleData1)>2000)
+
+				{
+
+					gu16Difference = (4095 - gu16CurrentAngleData1) + gu16PreviousAngleData1;
+					gu16ClockWiseCounterS1 += gu16Difference;
+					isFlagCWS1=1;
+					isFlagCCWS1=0;
+
+				}
+				else if(gu16PreviousAngleData1 < gu16CurrentAngleData1)
+				{
+					gu16Difference = (gu16CurrentAngleData1 - gu16PreviousAngleData1);
+					gu16ClockWiseCounterS1 -= gu16Difference;
+					isFlagCWS1=1;
+					isFlagCCWS1=0;
+
+				}
+			if (gu16CurrentAngleData2 > gu16PreviousAngleData2)
+
+				{
+					gu16Difference = (gu16CurrentAngleData2 - gu16PreviousAngleData2);
+					gu16ClockWiseCounterS2 += gu16Difference;
+					isFlagCWS2=1;
+					isFlagCCWS2=0;
+
+				}
+
+				else if ( (gu16PreviousAngleData2 > gu16CurrentAngleData2)&&(gu16PreviousAngleData2 - gu16CurrentAngleData2)>2000)
+
+				{
+
+					gu16Difference = (4095 - gu16PreviousAngleData2) + gu16CurrentAngleData2;
+					gu16ClockWiseCounterS2 += gu16Difference;
+					isFlagCWS2=1;
+					isFlagCCWS2=0;
+
+				}
+				else if (gu16PreviousAngleData2 > gu16CurrentAngleData2)
+				{
+					gu16Difference = (gu16PreviousAngleData2 - gu16CurrentAngleData2);
+				    gu16ClockWiseCounterS2 -= gu16Difference;
+					isFlagCWS2=1;
+					isFlagCCWS2=0;
+				}
+		}
+		else if((((current_positions1>=current_positions2) && (position_difference>=0)) ||((current_positions1<=current_positions2)
+				&& (position_difference<0)) ) && (isFlagCCWS1))
+		{
+			if (gu16CurrentAngleData1 > gu16PreviousAngleData1)
+
+				{
+					gu16Difference = (gu16CurrentAngleData1 - gu16PreviousAngleData1);
+					gu16CounterClockWiseCounterS1 += gu16Difference;
+					isFlagCCWS1=1;
+					isFlagCWS1=0;
+
+				}
+
+				else if ((gu16PreviousAngleData1 > gu16CurrentAngleData1) && (gu16PreviousAngleData1 - gu16CurrentAngleData1)>2000)
+
+				{
+
+					gu16Difference = (4095 - gu16PreviousAngleData1) + gu16CurrentAngleData1;
+					gu16CounterClockWiseCounterS1 += gu16Difference;
+					isFlagCCWS1=1;
+					isFlagCWS1=0;
+
+				}
+				else if(gu16PreviousAngleData1 > gu16CurrentAngleData1)
+				{
+					gu16Difference = (gu16PreviousAngleData1 - gu16CurrentAngleData1);
+					gu16CounterClockWiseCounterS1 -= gu16Difference;
+					isFlagCCWS1=1;
+					isFlagCWS1=0;
+				}
+			if (gu16CurrentAngleData2 < gu16PreviousAngleData2)
+
+				{
+					gu16Difference = (gu16PreviousAngleData2 - gu16CurrentAngleData2);
+					gu16CounterClockWiseCounterS2 += gu16Difference;
+					isFlagCCWS2=1;
+					isFlagCWS2=0;
+				}
+
+				else if ((gu16PreviousAngleData2< gu16CurrentAngleData2) && (gu16CurrentAngleData2- gu16PreviousAngleData2)>2000)
+
+				{
+
+					gu16Difference = (4095 - gu16CurrentAngleData2) + gu16PreviousAngleData2;
+					gu16CounterClockWiseCounterS2 += gu16Difference;
+					isFlagCCWS2=1;
+					isFlagCWS2=0;
+
+				}
+				else if (gu16PreviousAngleData2< gu16CurrentAngleData2)
+				{
+					gu16Difference = (gu16CurrentAngleData2 - gu16PreviousAngleData2);
+					gu16CounterClockWiseCounterS2 -= gu16Difference;
+					isFlagCCWS1=1;
+					isFlagCWS1=0;
+				}
+		}
+
+}
+
+
+
